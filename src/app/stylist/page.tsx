@@ -2,9 +2,9 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import ClosetClient from "@/components/ClosetClient"
+import StylistClient from "@/components/StylistClient"
 
-export default async function Home() {
+export default async function StylistPage() {
   const session = await getServerSession(authOptions)
 
   if (!session?.user) {
@@ -12,9 +12,8 @@ export default async function Home() {
   }
 
   const items = await prisma.item.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" }
+    where: { userId: session.user.id }
   })
 
-  return <ClosetClient initialItems={items} />
+  return <StylistClient items={items} />
 }
