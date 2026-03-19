@@ -18,6 +18,13 @@ const notoSansJP = Noto_Sans_JP({
 export const metadata: Metadata = {
   title: "MyCloset",
   description: "AI Stylist & Digital Closet",
+  manifest: "/manifest.json",
+  themeColor: "#1c1917",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "MyCloset",
+  },
 };
 
 export default function RootLayout({

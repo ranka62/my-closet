@@ -12,6 +12,7 @@ export default function AddItemModal({
   onAdd: (item: Item) => void
 }) {
   const [loading, setLoading] = useState(false)
+  const [analyzing, setAnalyzing] = useState(false)
   const [formData, setFormData] = useState({
     imageUrl: "",
     category: "トップス",
@@ -19,15 +20,46 @@ export default function AddItemModal({
     name: "",
     price: "",
     season: "All",
-    source: ""
+    source: "",
+    status: "available",
+    removeBackground: false
   })
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
       const reader = new FileReader()
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, imageUrl: reader.result as string }))
+      reader.onloadend = async () => {
+        let resultImage = reader.result as string
+        
+        // 背景切り抜き処理は省略
+        
+        setFormData(prev => ({ ...prev, imageUrl: resultImage }))
+        
+        // 画像解析APIを呼び出す
+        setAnalyzing(true)
+        try {
+          const res = await fetch("/api/analyze-image", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageUrl: resultImage })
+          })
+          
+          if (res.ok) {
+            const data = await res.json()
+            setFormData(prev => ({
+              ...prev,
+              category: data.category || prev.category,
+              season: data.season || prev.season,
+              brand: data.brand || prev.brand,
+              name: data.name || prev.name
+            }))
+          }
+        } catch (error) {
+          console.error("Failed to analyze image", error)
+        } finally {
+          setAnalyzing(false)
+        }
       }
       reader.readAsDataURL(file)
     }
@@ -72,7 +104,18 @@ export default function AddItemModal({
         
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-6">
           <div className="space-y-3">
-            <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider">Photo <span className="text-red-400">*</span></label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider">Photo <span className="text-red-400">*</span></label>
+              <label className="flex items-center gap-2 text-xs text-stone-600 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  className="rounded border-stone-300 text-stone-900 focus:ring-stone-900"
+                  checked={formData.removeBackground}
+                  onChange={e => setFormData(prev => ({ ...prev, removeBackground: e.target.checked }))}
+                />
+                背景を切り抜く（準備中）
+              </label>
+            </div>
             <div className={`border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition-colors relative ${formData.imageUrl ? 'border-transparent bg-stone-50' : 'border-stone-200 hover:border-stone-300 hover:bg-stone-50'}`}>
               {formData.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -88,11 +131,20 @@ export default function AddItemModal({
                   </div>
                 </div>
               )}
+              {analyzing && (
+                <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center rounded-2xl">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="h-6 w-6 border-2 border-stone-900 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-xs font-medium text-stone-600">AIが画像を解析中...</span>
+                  </div>
+                </div>
+              )}
               <input 
                 type="file" 
                 accept="image/*" 
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
                 onChange={handleImageUpload}
+                disabled={analyzing}
                 required={!formData.imageUrl}
               />
             </div>

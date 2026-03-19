@@ -5,7 +5,7 @@ import { DayPicker } from "react-day-picker"
 import { format, isSameDay } from "date-fns"
 import { ja } from "date-fns/locale"
 import "react-day-picker/dist/style.css"
-import { Plus, Sparkles, MapPin, AlignLeft, Calendar as CalendarIcon } from "lucide-react"
+import { Plus, Sparkles, MapPin, AlignLeft, Calendar as CalendarIcon, Users } from "lucide-react"
 
 export default function CalendarClient({ coordinates, items }: { coordinates: any[], items: any[] }) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
@@ -22,6 +22,7 @@ export default function CalendarClient({ coordinates, items }: { coordinates: an
   const [formData, setFormData] = useState({
     scene: "",
     notes: "",
+    companions: "",
     imageUrl: "",
     itemIds: [] as string[]
   })
@@ -120,16 +121,29 @@ export default function CalendarClient({ coordinates, items }: { coordinates: an
               </div>
               <div className="space-y-3">
                 <label className="flex items-center gap-2 text-xs font-medium text-stone-500 uppercase tracking-wider">
-                  <AlignLeft className="h-4 w-4" /> Notes
+                  <Users className="h-4 w-4" /> Companions
                 </label>
                 <input 
                   type="text" 
-                  placeholder="e.g. 少し肌寒かった"
+                  placeholder="e.g. 友人、同僚、家族"
                   className="w-full border-b-2 border-stone-200 bg-transparent py-2 text-lg font-light text-stone-900 focus:border-stone-900 focus:outline-none transition-colors placeholder:text-stone-300"
-                  value={formData.notes}
-                  onChange={e => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  value={formData.companions}
+                  onChange={e => setFormData(prev => ({ ...prev, companions: e.target.value }))}
                 />
               </div>
+            </div>
+            
+            <div className="space-y-3">
+              <label className="flex items-center gap-2 text-xs font-medium text-stone-500 uppercase tracking-wider">
+                <AlignLeft className="h-4 w-4" /> Notes
+              </label>
+              <input 
+                type="text" 
+                placeholder="e.g. 少し肌寒かった"
+                className="w-full border-b-2 border-stone-200 bg-transparent py-2 text-lg font-light text-stone-900 focus:border-stone-900 focus:outline-none transition-colors placeholder:text-stone-300"
+                value={formData.notes}
+                onChange={e => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+              />
             </div>
 
             <div className="space-y-4 pt-4">
@@ -178,6 +192,12 @@ export default function CalendarClient({ coordinates, items }: { coordinates: an
                       </span>
                     )}
                     <h3 className="text-2xl font-serif text-stone-900">{coord.scene || "Scene not set"}</h3>
+                    {coord.companions && (
+                      <p className="flex items-center gap-1.5 text-sm text-stone-500 font-light">
+                        <Users className="h-3.5 w-3.5" />
+                        {coord.companions}
+                      </p>
+                    )}
                   </div>
                 </div>
                 

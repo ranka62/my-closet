@@ -10,7 +10,7 @@ export async function POST(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const { date, scene, notes, itemIds, isAi, imageUrl } = await req.json()
+    const { date, scene, notes, itemIds, isAi, imageUrl, companions } = await req.json()
 
     const coordinate = await prisma.coordinate.create({
       data: {
@@ -18,6 +18,7 @@ export async function POST(req: Request) {
         date: new Date(date),
         scene,
         notes,
+        companions,
         isAi,
         imageUrl,
         items: {

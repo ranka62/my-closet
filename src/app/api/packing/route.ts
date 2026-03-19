@@ -10,30 +10,26 @@ export async function POST(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const body = await req.json()
-    const { imageUrl, category, brand, name, price, season, source, status } = body
+    const { title, startDate, endDate, notes, itemIds } = await req.json()
 
-    if (!imageUrl || !category) {
-      return new NextResponse("Missing required fields", { status: 400 })
-    }
-
-    const item = await prisma.item.create({
+    const packingList = await prisma.packingList.create({
       data: {
         userId: session.user.id,
-        imageUrl,
-        category,
-        brand,
-        name,
-        price,
-        season,
-        source,
-        status: status || "available"
+        title,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        notes,
+        items: {
+          create: itemIds.map((id: string) => ({
+            item: { connect: { id } }
+          }))
+        }
       }
     })
 
-    return NextResponse.json(item)
+    return NextResponse.json(packingList)
   } catch (error) {
-    console.error("[ITEMS_POST]", error)
+    console.error("[PACKING_POST]", error)
     return new NextResponse("Internal error", { status: 500 })
   }
 }

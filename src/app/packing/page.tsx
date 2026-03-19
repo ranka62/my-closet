@@ -2,9 +2,9 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import ClosetClient from "@/components/ClosetClient"
+import PackingClient from "./PackingClient"
 
-export default async function Home() {
+export default async function PackingPage() {
   const session = await getServerSession(authOptions)
 
   if (!session?.user) {
@@ -12,12 +12,18 @@ export default async function Home() {
   }
 
   const items = await prisma.item.findMany({
-    where: { userId: session.user.id },
-    include: {
-      coordinates: true // 着用回数計算用
-    },
-    orderBy: { createdAt: "desc" }
+    where: { userId: session.user.id }
   })
 
-  return <ClosetClient initialItems={items} />
+  const packingLists = await prisma.packingList.findMany({
+    where: { userId: session.user.id },
+    include: {
+      items: {
+        include: { item: true }
+      }
+    },
+    orderBy: { startDate: 'desc' }
+  })
+
+  return <PackingClient items={items} initialLists={packingLists} />
 }

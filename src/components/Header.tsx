@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Shirt, Calendar, Sparkles } from "lucide-react"
+import { Shirt, Calendar, Sparkles, Briefcase } from "lucide-react"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { LogoutButton } from "./LogoutButton"
@@ -30,6 +30,10 @@ export default async function Header() {
           <Link href="/calendar" className="flex items-center gap-2 text-sm font-medium text-stone-600 hover:text-stone-900 transition-colors">
             <span className="hidden sm:inline">Calendar</span>
             <Calendar className="h-4 w-4 sm:hidden" />
+          </Link>
+          <Link href="/packing" className="flex items-center gap-2 text-sm font-medium text-stone-600 hover:text-stone-900 transition-colors">
+            <span className="hidden sm:inline">Packing</span>
+            <Briefcase className="h-4 w-4 sm:hidden" />
           </Link>
           <div className="h-4 w-px bg-stone-200 mx-2 hidden sm:block" />
           <LogoutButton />
