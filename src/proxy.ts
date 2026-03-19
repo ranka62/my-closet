@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   // Basic認証のユーザー名とパスワードを環境変数から取得
   // 設定されていない場合はBasic認証をスキップ（ローカル開発用など）
   const basicAuthUser = process.env.BASIC_AUTH_USER
