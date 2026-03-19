@@ -87,10 +87,15 @@ function LoginForm() {
         </div>
       </form>
       
-      <div className="text-center text-sm text-stone-500 mt-8">
-        Don&apos;t have an account?{" "}
-        <Link href="/register" className="font-medium text-stone-900 hover:underline">
-          Sign up
+      <div className="flex flex-col items-center gap-4 text-sm text-stone-500 mt-8">
+        <div>
+          Don&apos;t have an account?{" "}
+          <Link href="/register" className="font-medium text-stone-900 hover:underline">
+            Sign up
+          </Link>
+        </div>
+        <Link href="/reset-password" className="text-xs hover:text-stone-900 transition-colors">
+          Forgot your password?
         </Link>
       </div>
     </>
