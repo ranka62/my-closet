@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma"
 // アイテムの更新
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -14,7 +14,7 @@ export async function PATCH(
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
     const body = await req.json()
     const { category, brand, name, price, season, source, status } = body
 
@@ -44,7 +44,7 @@ export async function PATCH(
 // アイテムの削除
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -52,7 +52,7 @@ export async function DELETE(
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     await prisma.item.delete({
       where: {
