@@ -56,7 +56,9 @@ JSONフォーマットのみを出力してください:
 `
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
-        contents: prompt,
+        contents: [
+          { text: prompt }
+        ],
         config: { responseMimeType: "application/json" }
       })
       
@@ -65,7 +67,9 @@ JSONフォーマットのみを出力してください:
         throw new Error("No response from Gemini")
       }
 
-      return NextResponse.json(JSON.parse(text))
+      // JSONをクリーンアップしてパース
+      const cleanedText = text.replace(/```json/g, "").replace(/```/g, "").trim()
+      return NextResponse.json(JSON.parse(cleanedText))
     }
 
     // APIキーがない場合は最低限の情報を返す

@@ -17,9 +17,12 @@ export async function POST(req: Request) {
     }
 
     if (!process.env.GEMINI_API_KEY) {
+      const matchedItems = items.slice(0, 3)
       return NextResponse.json({
-        matchedItemIds: items.slice(0, 2).map((i: any) => i.id),
-        reason: "※APIキー未設定のモックデータです。\nアップロードされたアイテムには、あなたのクローゼットにあるこれらのアイテムがよく似合います。"
+        matchedItemIds: matchedItems.map((i: any) => i.id),
+        reason: matchedItems.length > 0 
+          ? "※APIキー未設定のデモ表示です。\nあなたのクローゼットにある「" + matchedItems.map((i: any) => i.brand || i.name).join("」や「") + "」などのアイテムが、アップロードされた服にとてもよく似合います。全体のシルエットと色合いを合わせるのがポイントです。"
+          : "クローゼットにアイテムがないため、マッチングできませんでした。"
       })
     }
 
@@ -32,9 +35,9 @@ export async function POST(req: Request) {
 この画像の特徴を分析し、以下のユーザーの手持ちアイテムリストの中から、**この画像のアイテムに最も似合うアイテム**を1〜3個選んでください。
 
 【手持ちのアイテムリスト】
-${items.map((item: any) => `- ID: ${item.id} | カテゴリ: ${item.category} | ブランド: ${item.brand || 'なし'} | 名前: ${item.name || 'なし'} | シーズン: ${item.season}`).join('\n')}
+${items.map((item: any) => `- ID: ${item.id} | カテゴリ: ${item.category} | ブランド: ${item.brand || 'なし'} | 名前: ${item.name || 'なし'} | シーズン: ${item.season} | 色: ${item.color || '不明'}`).join('\n')}
 
-以下のJSONフォーマットのみを出力してください:
+以下のJSONフォーマットのみを出力してください（Markdownのバッククォートなどは含めないでください）:
 {
   "matchedItemIds": ["選んだアイテムのIDの配列"],
   "reason": "画像のアイテムの特徴と、選んだ手持ちアイテムがなぜそれに合うのかの解説（丁寧に）"
@@ -50,7 +53,7 @@ ${items.map((item: any) => `- ID: ${item.id} | カテゴリ: ${item.category} | 
             mimeType: "image/jpeg"
           }
         },
-        prompt
+        { text: prompt }
       ],
       config: {
         responseMimeType: "application/json",
@@ -62,7 +65,9 @@ ${items.map((item: any) => `- ID: ${item.id} | カテゴリ: ${item.category} | 
       throw new Error("No response from Gemini")
     }
 
-    return NextResponse.json(JSON.parse(text))
+    // JSONをクリーンアップしてパース
+    const cleanedText = text.replace(/```json/g, "").replace(/```/g, "").trim()
+    return NextResponse.json(JSON.parse(cleanedText))
 
   } catch (error) {
     console.error("[MATCH_SEARCH_POST]", error)

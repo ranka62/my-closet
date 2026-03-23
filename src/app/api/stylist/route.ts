@@ -47,7 +47,9 @@ ${items.map((item: any) => `- ID: ${item.id} | カテゴリ: ${item.category} | 
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: prompt,
+      contents: [
+        { text: prompt }
+      ],
       config: {
         responseMimeType: "application/json",
       }
@@ -58,7 +60,9 @@ ${items.map((item: any) => `- ID: ${item.id} | カテゴリ: ${item.category} | 
       throw new Error("No response from Gemini")
     }
 
-    const result = JSON.parse(text)
+    // JSONをクリーンアップしてパース
+    const cleanedText = text.replace(/```json/g, "").replace(/```/g, "").trim()
+    const result = JSON.parse(cleanedText)
     return NextResponse.json(result)
 
   } catch (error) {

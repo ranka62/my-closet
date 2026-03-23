@@ -50,7 +50,7 @@ export async function POST(req: Request) {
             mimeType: "image/jpeg"
           }
         },
-        prompt
+        { text: prompt }
       ],
       config: {
         responseMimeType: "application/json",
@@ -62,7 +62,9 @@ export async function POST(req: Request) {
       throw new Error("No response from Gemini")
     }
 
-    return NextResponse.json(JSON.parse(text))
+    // JSONをクリーンアップしてパース
+    const cleanedText = text.replace(/```json/g, "").replace(/```/g, "").trim()
+    return NextResponse.json(JSON.parse(cleanedText))
 
   } catch (error) {
     console.error("[FASHION_CHECK_POST]", error)

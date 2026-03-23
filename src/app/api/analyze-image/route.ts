@@ -54,7 +54,7 @@ export async function POST(req: Request) {
             mimeType: "image/jpeg" // または png など。簡易的にjpegとして扱う
           }
         },
-        prompt
+        { text: prompt }
       ],
       config: {
         responseMimeType: "application/json",
@@ -66,7 +66,9 @@ export async function POST(req: Request) {
       throw new Error("No response from Gemini")
     }
 
-    const result = JSON.parse(text)
+    // JSONをクリーンアップしてパース
+    const cleanedText = text.replace(/```json/g, "").replace(/```/g, "").trim()
+    const result = JSON.parse(cleanedText)
     return NextResponse.json(result)
 
   } catch (error) {

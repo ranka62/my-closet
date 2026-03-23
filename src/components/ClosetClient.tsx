@@ -103,9 +103,46 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
     }
   }
 
+  const compressImage = (base64Str: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = base64Str;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1200;
+        const MAX_HEIGHT = 1200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      };
+    });
+  };
+
   const handleMatchImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    if (items.length === 0) {
+      alert("クローゼットにアイテムがありません。先にアイテムを追加してください。")
+      return
+    }
 
     const reader = new FileReader()
     reader.onloadend = async () => {
@@ -115,22 +152,45 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
       setMatchResult(null)
 
       try {
+        const compressed = await compressImage(base64Image)
+        setMatchingImage(compressed) // Use compressed for preview too
+
+        // ペイロード削減のため、画像データを除いたメタデータのみを送信
+        const itemsMetadata = items.map((item: any) => ({
+          id: item.id,
+          category: item.category,
+          brand: item.brand,
+          name: item.name,
+          season: item.season,
+          color: item.color
+        }))
+
         const res = await fetch("/api/match-search", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageUrl: base64Image, items })
+          body: JSON.stringify({ imageUrl: compressed, items: itemsMetadata })
         })
         if (res.ok) {
           setMatchResult(await res.json())
+        } else {
+          const errorText = await res.text()
+          console.error("Match search failed:", errorText)
+          alert("検索に失敗しました: " + errorText)
         }
       } catch (error) {
         console.error("Match search failed", error)
-        alert("検索に失敗しました")
+        alert("検索中にエラーが発生しました")
       } finally {
         setIsMatching(false)
       }
     }
+    reader.onerror = () => {
+      alert("画像の読み込みに失敗しました")
+      setIsMatching(false)
+    }
     reader.readAsDataURL(file)
+    // 次回同じファイルを選んでもonChangeが走るようにリセット
+    e.target.value = ""
   }
 
   // Declutter State
@@ -143,10 +203,20 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
     if (items.length === 0) return
     setIsDecluttering(true)
     try {
+      // ペイロード削減のため、画像データを除いたメタデータのみを送信
+      const itemsMetadata = items.map((item: any) => ({
+        id: item.id,
+        category: item.category,
+        brand: item.brand,
+        name: item.name,
+        season: item.season,
+        color: item.color
+      }))
+
       const res = await fetch("/api/declutter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items })
+        body: JSON.stringify({ items: itemsMetadata })
       })
       if (res.ok) {
         setDeclutterResult(await res.json())
