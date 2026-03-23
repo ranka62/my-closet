@@ -17,12 +17,14 @@ export async function POST(req: Request) {
     }
 
     if (!process.env.GEMINI_API_KEY) {
-      // Mock response
+      // Mock response that feels a bit more dynamic
+      const categories = ["トップス", "ボトムス", "アウター", "バッグ", "シューズ", "ガジェット"];
+      const randomCategory = categories[Math.floor(Math.random() * categories.length)];
       return NextResponse.json({
-        category: "トップス",
+        category: randomCategory,
         season: "All",
-        brand: "Unknown",
-        name: "自動解析されたアイテム",
+        brand: "Mock Brand",
+        name: `${randomCategory} (APIキー未設定のためランダム)`,
       })
     }
 

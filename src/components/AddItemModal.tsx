@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Item } from "@prisma/client"
-import { X, Upload } from "lucide-react"
+import { X, Upload, Sparkles } from "lucide-react"
 
 export default function AddItemModal({
   onClose,
@@ -25,6 +25,32 @@ export default function AddItemModal({
     removeBackground: false
   })
 
+  const analyzeImage = async (image: string) => {
+    setAnalyzing(true)
+    try {
+      const res = await fetch("/api/analyze-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: image })
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        setFormData(prev => ({
+          ...prev,
+          category: data.category || prev.category,
+          season: data.season || prev.season,
+          brand: data.brand || prev.brand,
+          name: data.name || prev.name
+        }))
+      }
+    } catch (error) {
+      console.error("Failed to analyze image", error)
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -34,32 +60,15 @@ export default function AddItemModal({
         
         // 背景切り抜き処理は省略
         
-        setFormData(prev => ({ ...prev, imageUrl: resultImage }))
+        setFormData(prev => ({ 
+          ...prev, 
+          imageUrl: resultImage,
+          brand: "", // Clear old data to show it's updating
+          name: "" 
+        }))
         
         // 画像解析APIを呼び出す
-        setAnalyzing(true)
-        try {
-          const res = await fetch("/api/analyze-image", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ imageUrl: resultImage })
-          })
-          
-          if (res.ok) {
-            const data = await res.json()
-            setFormData(prev => ({
-              ...prev,
-              category: data.category || prev.category,
-              season: data.season || prev.season,
-              brand: data.brand || prev.brand,
-              name: data.name || prev.name
-            }))
-          }
-        } catch (error) {
-          console.error("Failed to analyze image", error)
-        } finally {
-          setAnalyzing(false)
-        }
+        await analyzeImage(resultImage)
       }
       reader.readAsDataURL(file)
     }
@@ -138,6 +147,15 @@ export default function AddItemModal({
                     <span className="text-xs font-medium text-stone-600">AIが画像を解析中...</span>
                   </div>
                 </div>
+              )}
+              {formData.imageUrl && !analyzing && (
+                <button 
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); analyzeImage(formData.imageUrl); }}
+                  className="absolute bottom-2 right-2 bg-white/90 backdrop-blur text-stone-900 text-[10px] font-bold px-2 py-1 rounded-full shadow-sm border border-stone-200 hover:bg-stone-100 transition-colors flex items-center gap-1"
+                >
+                  <Sparkles className="h-3 w-3" /> 再解析
+                </button>
               )}
               <input 
                 type="file" 

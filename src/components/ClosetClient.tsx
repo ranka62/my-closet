@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react"
 import { Item } from "@prisma/client"
-import { Plus, Search, Filter, Shirt, X, Calculator, ImagePlus, Sparkles, Trash2 } from "lucide-react"
+import { Plus, Search, Filter, Shirt, X, Calculator, ImagePlus, Sparkles, Trash2, Edit3 } from "lucide-react"
 import AddItemModal from "./AddItemModal"
 
 const CATEGORIES = ["すべて", "トップス", "ボトムス", "アウター", "シューズ", "アクセサリー", "ワンピース", "バッグ", "雑貨・ライフスタイル", "ガジェット", "その他"]
@@ -13,15 +13,88 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
   const [category, setCategory] = useState("すべて")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<any | null>(null)
-  
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editFormData, setEditFormData] = useState({
+    category: "",
+    brand: "",
+    name: "",
+    price: "",
+    season: "",
+    source: "",
+    status: ""
+  })
+  const [isMatching, setIsMatching] = useState(false) 
+  const [updating, setUpdating] = useState(false)
+
   // Image Match Search State
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [matchingImage, setMatchingImage] = useState<string | null>(null)
-  const [isMatching, setIsMatching] = useState(false)
   const [matchResult, setMatchResult] = useState<{
     matchedItemIds: string[],
     reason: string
   } | null>(null)
+
+  // ... (existing states)
+
+  const handleEditClick = (item: any) => {
+    setEditFormData({
+      category: item.category,
+      brand: item.brand || "",
+      name: item.name || "",
+      price: item.price?.toString() || "",
+      season: item.season || "",
+      source: item.source || "",
+      status: item.status || "available"
+    })
+    setIsEditMode(true)
+  }
+
+  const handleUpdateItem = async () => {
+    if (!selectedItem) return
+    setUpdating(true)
+    try {
+      const res = await fetch(`/api/items/${selectedItem.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...editFormData,
+          price: editFormData.price ? parseInt(editFormData.price) : null
+        })
+      })
+      if (res.ok) {
+        const updatedItem = await res.json()
+        setItems(items.map(i => i.id === updatedItem.id ? { ...updatedItem, coordinates: i.coordinates } : i))
+        setSelectedItem({ ...updatedItem, coordinates: selectedItem.coordinates })
+        setIsEditMode(false)
+      }
+    } catch (error) {
+      console.error(error)
+      alert("更新に失敗しました")
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleDeleteItem = async () => {
+    if (!selectedItem) return
+    if (!window.confirm("このアイテムを削除してもよろしいですか？この操作は取り消せません。")) return
+
+    setUpdating(true)
+    try {
+      const res = await fetch(`/api/items/${selectedItem.id}`, {
+        method: "DELETE"
+      })
+      if (res.ok) {
+        setItems(items.filter(i => i.id !== selectedItem.id))
+        setSelectedItem(null)
+      }
+    } catch (error) {
+      console.error(error)
+      alert("削除に失敗しました")
+    } finally {
+      setUpdating(false)
+    }
+  }
 
   const handleMatchImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -312,55 +385,190 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
             </div>
             <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col overflow-y-auto">
               <div className="flex justify-between items-start mb-6">
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-stone-400 font-medium mb-1">{selectedItem.category}</p>
-                  <h2 className="text-2xl font-serif text-stone-900">{selectedItem.brand || "Unknown Brand"}</h2>
-                  <p className="text-stone-500 font-light mt-1">{selectedItem.name || "No Name"}</p>
+                <div className="flex-1 min-w-0 pr-4">
+                  {isEditMode ? (
+                    <div className="space-y-4 pr-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase tracking-wider text-stone-400 font-medium">Category</label>
+                        <select 
+                          className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2 text-sm focus:border-stone-400 focus:outline-none"
+                          value={editFormData.category}
+                          onChange={e => setEditFormData(prev => ({ ...prev, category: e.target.value }))}
+                        >
+                          {CATEGORIES.filter(c => c !== "すべて").map(c => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase tracking-wider text-stone-400 font-medium">Brand</label>
+                        <input 
+                          type="text"
+                          className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2 text-sm focus:border-stone-400 focus:outline-none"
+                          value={editFormData.brand}
+                          onChange={e => setEditFormData(prev => ({ ...prev, brand: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase tracking-wider text-stone-400 font-medium">Name</label>
+                        <input 
+                          type="text"
+                          className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2 text-sm focus:border-stone-400 focus:outline-none"
+                          value={editFormData.name}
+                          onChange={e => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-xs uppercase tracking-wider text-stone-400 font-medium mb-1">{selectedItem.category}</p>
+                      <h2 className="text-2xl font-serif text-stone-900 truncate">{selectedItem.brand || "Unknown Brand"}</h2>
+                      <p className="text-stone-500 font-light mt-1 truncate">{selectedItem.name || "No Name"}</p>
+                    </>
+                  )}
                 </div>
-                <button onClick={() => setSelectedItem(null)} className="p-2 hover:bg-stone-100 rounded-full text-stone-400 transition-colors">
-                  <X className="h-5 w-5" />
-                </button>
+                <div className="flex gap-2">
+                  {!isEditMode && (
+                    <button 
+                      onClick={() => handleEditClick(selectedItem)}
+                      className="p-2 hover:bg-stone-100 rounded-full text-stone-400 hover:text-stone-600 transition-colors"
+                      title="編集"
+                    >
+                      <Edit3 className="h-5 w-5" />
+                    </button>
+                  )}
+                  <button onClick={() => { setSelectedItem(null); setIsEditMode(false); }} className="p-2 hover:bg-stone-100 rounded-full text-stone-400 transition-colors">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
 
-              <div className="space-y-6 flex-1">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-stone-400 mb-1">Price</p>
-                    <p className="font-medium text-stone-900">¥{selectedItem.price?.toLocaleString() || "---"}</p>
+              <div className="space-y-6 flex-1 pr-4">
+                {isEditMode ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase tracking-wider text-stone-400 font-medium">Price (¥)</label>
+                        <input 
+                          type="number"
+                          className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2 text-sm focus:border-stone-400 focus:outline-none"
+                          value={editFormData.price}
+                          onChange={e => setEditFormData(prev => ({ ...prev, price: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase tracking-wider text-stone-400 font-medium">Season</label>
+                        <select 
+                          className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2 text-sm focus:border-stone-400 focus:outline-none"
+                          value={editFormData.season}
+                          onChange={e => setEditFormData(prev => ({ ...prev, season: e.target.value }))}
+                        >
+                          {["Spring", "Summer", "Autumn", "Winter", "All"].map(s => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase tracking-wider text-stone-400 font-medium">Source URL / Store</label>
+                      <input 
+                        type="text"
+                        className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2 text-sm focus:border-stone-400 focus:outline-none"
+                        value={editFormData.source}
+                        onChange={e => setEditFormData(prev => ({ ...prev, source: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase tracking-wider text-stone-400 font-medium">Status</label>
+                      <select 
+                        className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2 text-sm focus:border-stone-400 focus:outline-none"
+                        value={editFormData.status}
+                        onChange={e => setEditFormData(prev => ({ ...prev, status: e.target.value }))}
+                      >
+                        {["available", "washing", "cleaning", "archived"].map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex gap-2 pt-4">
+                      <button 
+                        onClick={handleUpdateItem}
+                        disabled={updating}
+                        className="flex-1 bg-stone-900 text-white py-2 rounded-full text-sm font-medium hover:bg-stone-800 disabled:opacity-50"
+                      >
+                        {updating ? "Saving..." : "Save Changes"}
+                      </button>
+                      <button 
+                        onClick={() => setIsEditMode(false)}
+                        className="flex-1 border border-stone-200 text-stone-600 py-2 rounded-full text-sm font-medium hover:bg-stone-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-stone-400 mb-1">Season</p>
-                    <p className="font-medium text-stone-900">{selectedItem.season || "---"}</p>
-                  </div>
-                  <div>
-                    <p className="text-stone-400 mb-1">Source</p>
-                    <p className="font-medium text-stone-900">{selectedItem.source || "---"}</p>
-                  </div>
-                  <div>
-                    <p className="text-stone-400 mb-1">Status</p>
-                    <p className="font-medium text-stone-900 capitalize">{selectedItem.status}</p>
-                  </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="min-w-0">
+                        <p className="text-stone-400 mb-1">Price</p>
+                        <p className="font-medium text-stone-900">¥{selectedItem.price?.toLocaleString() || "---"}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-stone-400 mb-1">Season</p>
+                        <p className="font-medium text-stone-900">{selectedItem.season || "---"}</p>
+                      </div>
+                      <div className="col-span-2 min-w-0">
+                        <p className="text-stone-400 mb-1">Source</p>
+                        {selectedItem.source?.startsWith('http') ? (
+                          <a 
+                            href={selectedItem.source} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="font-medium text-stone-900 underline underline-offset-4 decoration-stone-300 hover:decoration-stone-900 transition-colors block truncate"
+                          >
+                            {selectedItem.source}
+                          </a>
+                        ) : (
+                          <p className="font-medium text-stone-900 truncate">{selectedItem.source || "---"}</p>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-stone-400 mb-1">Status</p>
+                        <p className="font-medium text-stone-900 capitalize">{selectedItem.status}</p>
+                      </div>
+                    </div>
 
-                <div className="bg-stone-50 rounded-2xl p-5 border border-stone-100">
-                  <h3 className="flex items-center gap-2 text-sm font-medium text-stone-900 mb-4">
-                    <Calculator className="h-4 w-4" /> Cost Per Wear Analysis
-                  </h3>
-                  <div className="flex justify-between items-end">
-                    <div>
-                      <p className="text-xs text-stone-500 mb-1">Worn Count</p>
-                      <p className="text-2xl font-serif">{selectedItem.coordinates?.length || 0} <span className="text-sm font-sans text-stone-400">times</span></p>
+                    <div className="bg-stone-50 rounded-2xl p-5 border border-stone-100">
+                      <h3 className="flex items-center gap-2 text-sm font-medium text-stone-900 mb-4">
+                        <Calculator className="h-4 w-4" /> Cost Per Wear Analysis
+                      </h3>
+                      <div className="flex justify-between items-end">
+                        <div>
+                          <p className="text-xs text-stone-500 mb-1">Worn Count</p>
+                          <p className="text-2xl font-serif">{selectedItem.coordinates?.length || 0} <span className="text-sm font-sans text-stone-400">times</span></p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-stone-500 mb-1">Cost Per Wear</p>
+                          <p className="text-2xl font-serif text-stone-900">
+                            {selectedItem.price && selectedItem.coordinates?.length > 0
+                              ? `¥${Math.round(selectedItem.price / selectedItem.coordinates.length).toLocaleString()}`
+                              : "---"}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs text-stone-500 mb-1">Cost Per Wear</p>
-                      <p className="text-2xl font-serif text-stone-900">
-                        {selectedItem.price && selectedItem.coordinates?.length > 0
-                          ? `¥${Math.round(selectedItem.price / selectedItem.coordinates.length).toLocaleString()}`
-                          : "---"}
-                      </p>
+
+                    <div className="pt-4">
+                      <button 
+                        onClick={handleDeleteItem}
+                        disabled={updating}
+                        className="flex items-center justify-center gap-2 w-full text-red-500 text-xs font-medium hover:text-red-700 transition-colors py-2 border border-red-100 rounded-xl hover:bg-red-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Delete this item
+                      </button>
                     </div>
-                  </div>
-                </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
