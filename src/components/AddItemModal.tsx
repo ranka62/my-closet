@@ -14,16 +14,47 @@ export default function AddItemModal({
   const [loading, setLoading] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
   const [formData, setFormData] = useState({
-    imageUrl: "",
+    imageUrl: "", // Main image
+    images: [] as string[], // All images
     category: "トップス",
     brand: "",
     name: "",
+    color: "",
     price: "",
-    season: "All",
+    season: "オール",
     source: "",
     status: "available",
     removeBackground: false
   })
+
+  const SEASONS = ["夏", "春秋", "春夏秋", "春秋冬", "冬", "オール"]
+
+  const fetchUrlInfo = async () => {
+    if (!formData.source || !formData.source.startsWith("http")) return
+    setLoading(true)
+    try {
+      const res = await fetch("/api/fetch-url-info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: formData.source })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setFormData(prev => ({
+          ...prev,
+          name: data.name || prev.name,
+          brand: data.brand || prev.brand,
+          price: data.price?.toString() || prev.price,
+          category: data.category || prev.category,
+          color: data.color || prev.color
+        }))
+      }
+    } catch (error) {
+      console.error("Failed to fetch URL info", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const analyzeImage = async (image: string) => {
     setAnalyzing(true)
@@ -39,9 +70,10 @@ export default function AddItemModal({
         setFormData(prev => ({
           ...prev,
           category: data.category || prev.category,
-          season: data.season || prev.season,
+          season: data.season === "All" ? "オール" : (data.season || prev.season),
           brand: data.brand || prev.brand,
-          name: data.name || prev.name
+          name: data.name || prev.name,
+          color: data.color || prev.color
         }))
       }
     } catch (error) {
@@ -57,7 +89,7 @@ export default function AddItemModal({
       img.src = base64Str;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1200; // 最大幅を1200pxに制限
+        const MAX_WIDTH = 1200;
         const MAX_HEIGHT = 1200;
         let width = img.width;
         let height = img.height;
@@ -78,42 +110,56 @@ export default function AddItemModal({
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
-        
-        // JPEG形式で画質を0.7（70%）に落として圧縮
         resolve(canvas.toDataURL('image/jpeg', 0.7));
       };
     });
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onloadend = async () => {
-        const rawImage = reader.result as string
-        
-        setAnalyzing(true)
-        try {
-          // 画像を圧縮
-          const compressedImage = await compressImage(rawImage)
-          
-          setFormData(prev => ({ 
-            ...prev, 
-            imageUrl: compressedImage,
-            brand: "", 
-            name: "" 
-          }))
-          
-          // 圧縮した画像で解析
-          await analyzeImage(compressedImage)
-        } catch (error) {
-          console.error("Image processing failed", error)
-        } finally {
-          setAnalyzing(false)
+    const files = e.target.files
+    if (files && files.length > 0) {
+      setAnalyzing(true)
+      const newImages: string[] = []
+      
+      try {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i]
+          const reader = new FileReader()
+          const base64 = await new Promise<string>((resolve) => {
+            reader.onloadend = () => resolve(reader.result as string)
+            reader.readAsDataURL(file)
+          })
+          const compressed = await compressImage(base64)
+          newImages.push(compressed)
         }
+
+        setFormData(prev => ({ 
+          ...prev, 
+          imageUrl: newImages[0], // Set first as main
+          images: [...prev.images, ...newImages],
+          brand: "", 
+          name: "" 
+        }))
+        
+        // Analyze the first image
+        await analyzeImage(newImages[0])
+      } catch (error) {
+        console.error("Image processing failed", error)
+      } finally {
+        setAnalyzing(false)
       }
-      reader.readAsDataURL(file)
     }
+  }
+
+  const removeImage = (index: number) => {
+    setFormData(prev => {
+      const newImages = prev.images.filter((_, i) => i !== index)
+      return {
+        ...prev,
+        images: newImages,
+        imageUrl: newImages[0] || ""
+      }
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -126,7 +172,7 @@ export default function AddItemModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          price: formData.price ? parseInt(formData.price) : null
+          price: formData.price ? parseInt(formData.price, 10) : null
         })
       })
       
@@ -160,7 +206,7 @@ export default function AddItemModal({
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-6">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider">Photo <span className="text-red-400">*</span></label>
+              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider">Photos <span className="text-red-400">*</span></label>
               <label className="flex items-center gap-2 text-xs text-stone-600 cursor-pointer">
                 <input 
                   type="checkbox" 
@@ -171,47 +217,60 @@ export default function AddItemModal({
                 背景を切り抜く（準備中）
               </label>
             </div>
-            <div className={`border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition-colors relative ${formData.imageUrl ? 'border-transparent bg-stone-50' : 'border-stone-200 hover:border-stone-300 hover:bg-stone-50'}`}>
-              {formData.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={formData.imageUrl} alt="Preview" className="mx-auto h-48 object-contain mix-blend-multiply" />
-              ) : (
-                <div className="py-8 space-y-3">
-                  <div className="mx-auto w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-stone-100">
-                    <Upload className="h-5 w-5 text-stone-400" strokeWidth={1.5} />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-stone-700">Click to upload</p>
-                    <p className="text-xs text-stone-400">PNG, JPG up to 5MB</p>
-                  </div>
+            
+            <div className="flex gap-4 overflow-x-auto pb-2">
+              {formData.images.map((img, idx) => (
+                <div key={idx} className="relative w-32 h-32 shrink-0 rounded-2xl border border-stone-200 overflow-hidden bg-stone-50">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={img} alt={`Preview ${idx + 1}`} className="w-full h-full object-contain mix-blend-multiply p-2" />
+                  <button 
+                    type="button"
+                    onClick={() => removeImage(idx)}
+                    className="absolute top-1 right-1 bg-white/90 rounded-full p-1 shadow-sm hover:bg-stone-100"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                  {idx === 0 && (
+                    <span className="absolute bottom-1 left-1 bg-stone-900 text-white text-[8px] px-1.5 py-0.5 rounded-sm">MAIN</span>
+                  )}
                 </div>
-              )}
-              {analyzing && (
-                <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center rounded-2xl">
-                  <div className="flex flex-col items-center gap-2">
+              ))}
+              
+              <div className={`shrink-0 w-32 h-32 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-colors relative ${formData.images.length === 0 ? 'w-full h-48' : 'border-stone-200 hover:border-stone-300 hover:bg-stone-50'}`}>
+                <div className="space-y-2 text-center">
+                  <Upload className="h-5 w-5 text-stone-400 mx-auto" strokeWidth={1.5} />
+                  {formData.images.length === 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-stone-700">Click to upload</p>
+                      <p className="text-xs text-stone-400">Multiple images allowed</p>
+                    </div>
+                  )}
+                </div>
+                {analyzing && (
+                  <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center rounded-2xl">
                     <div className="h-6 w-6 border-2 border-stone-900 border-t-transparent rounded-full animate-spin"></div>
-                    <span className="text-xs font-medium text-stone-600">AIが画像を解析中...</span>
                   </div>
-                </div>
-              )}
-              {formData.imageUrl && !analyzing && (
-                <button 
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); analyzeImage(formData.imageUrl); }}
-                  className="absolute bottom-2 right-2 bg-white/90 backdrop-blur text-stone-900 text-[10px] font-bold px-2 py-1 rounded-full shadow-sm border border-stone-200 hover:bg-stone-100 transition-colors flex items-center gap-1"
-                >
-                  <Sparkles className="h-3 w-3" /> 再解析
-                </button>
-              )}
-              <input 
-                type="file" 
-                accept="image/*" 
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
-                onChange={handleImageUpload}
-                disabled={analyzing}
-                required={!formData.imageUrl}
-              />
+                )}
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  multiple
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                  onChange={handleImageUpload}
+                  disabled={analyzing}
+                  required={formData.images.length === 0}
+                />
+              </div>
             </div>
+            {formData.images.length > 0 && !analyzing && (
+              <button 
+                type="button"
+                onClick={() => analyzeImage(formData.images[0])}
+                className="text-xs font-medium text-stone-600 hover:text-stone-900 flex items-center gap-1 mt-2"
+              >
+                <Sparkles className="h-3 w-3" /> 1枚目の画像で再解析
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-5">
@@ -234,22 +293,34 @@ export default function AddItemModal({
                 value={formData.season}
                 onChange={e => setFormData(prev => ({ ...prev, season: e.target.value }))}
               >
-                {["Spring", "Summer", "Autumn", "Winter", "All"].map(c => (
+                {SEASONS.map(c => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider">Brand</label>
-            <input 
-              type="text" 
-              placeholder="e.g. ZARA"
-              className="w-full border border-stone-200 bg-stone-50 rounded-xl p-3 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors placeholder:text-stone-300"
-              value={formData.brand}
-              onChange={e => setFormData(prev => ({ ...prev, brand: e.target.value }))}
-            />
+          <div className="grid grid-cols-2 gap-5">
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider">Brand</label>
+              <input 
+                type="text" 
+                placeholder="e.g. ZARA"
+                className="w-full border border-stone-200 bg-stone-50 rounded-xl p-3 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors placeholder:text-stone-300"
+                value={formData.brand}
+                onChange={e => setFormData(prev => ({ ...prev, brand: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider">Color</label>
+              <input 
+                type="text" 
+                placeholder="e.g. ホワイト, ブラック"
+                className="w-full border border-stone-200 bg-stone-50 rounded-xl p-3 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors placeholder:text-stone-300"
+                value={formData.color}
+                onChange={e => setFormData(prev => ({ ...prev, color: e.target.value }))}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -263,7 +334,7 @@ export default function AddItemModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-2">
               <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider">Price (¥)</label>
               <input 
@@ -275,7 +346,14 @@ export default function AddItemModal({
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider">Source</label>
+              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider flex justify-between">
+                Source 
+                {formData.source && formData.source.startsWith("http") && (
+                  <button type="button" onClick={fetchUrlInfo} className="text-stone-900 font-bold hover:underline normal-case">
+                    URLから情報を取得
+                  </button>
+                )}
+              </label>
               <input 
                 type="text" 
                 placeholder="Store or URL"

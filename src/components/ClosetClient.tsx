@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react"
 import { Item } from "@prisma/client"
-import { Plus, Search, Filter, Shirt, X, Calculator, ImagePlus, Sparkles, Trash2, Edit3 } from "lucide-react"
+import { Plus, Search, Filter, Shirt, X, Calculator, ImagePlus, Sparkles, Trash2, Edit3, ChevronLeft, ChevronRight } from "lucide-react"
 import AddItemModal from "./AddItemModal"
 
 const CATEGORIES = ["すべて", "トップス", "ボトムス", "アウター", "シューズ", "アクセサリー", "ワンピース", "バッグ", "雑貨・ライフスタイル", "ガジェット", "その他"]
@@ -13,6 +13,8 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
   const [category, setCategory] = useState("すべて")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<any | null>(null)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [showNameTooltip, setShowNameTooltip] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [editFormData, setEditFormData] = useState({
     category: "",
@@ -41,8 +43,9 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
       category: item.category,
       brand: item.brand || "",
       name: item.name || "",
+      color: item.color || "",
       price: item.price?.toString() || "",
-      season: item.season || "",
+      season: item.season || "オール",
       source: item.source || "",
       status: item.status || "available"
     })
@@ -377,17 +380,66 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
 
       {/* Item Details Modal */}
       {selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setSelectedItem(null)}>
-          <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col md:flex-row animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-            <div className="w-full md:w-1/2 aspect-square md:aspect-auto bg-stone-100 relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={selectedItem.imageUrl} alt={selectedItem.name || ""} className="w-full h-full object-cover mix-blend-multiply" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => { setSelectedItem(null); setIsEditMode(false); setCurrentImageIndex(0); setShowNameTooltip(false); }}>
+          <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col md:flex-row animate-in zoom-in-95 duration-200 relative" onClick={e => e.stopPropagation()}>
+            
+            <div className="w-full md:w-3/5 aspect-square md:aspect-auto bg-stone-100 relative group/carousel">
+              {/* Multiple Images Display with Arrows */}
+              <div className="w-full h-full relative overflow-hidden">
+                {selectedItem.images && selectedItem.images.length > 0 ? (
+                  <div 
+                    className="w-full h-full flex transition-transform duration-500 ease-out"
+                    style={{ transform: `translateX(-${currentImageIndex * 100}%)` }}
+                  >
+                    {selectedItem.images.map((img: any, idx: number) => (
+                      <img 
+                        key={idx} 
+                        src={img.url} 
+                        alt="" 
+                        className="w-full h-full object-contain mix-blend-multiply flex-shrink-0" 
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <img src={selectedItem.imageUrl} alt={selectedItem.name || ""} className="w-full h-full object-contain mix-blend-multiply" />
+                )}
+
+                {/* Navigation Arrows */}
+                {selectedItem.images?.length > 1 && (
+                  <>
+                    <button 
+                      onClick={() => setCurrentImageIndex(prev => (prev > 0 ? prev - 1 : selectedItem.images.length - 1))}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-white/80 backdrop-blur rounded-full text-stone-900 shadow-md opacity-0 group-hover/carousel:opacity-100 transition-opacity"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <button 
+                      onClick={() => setCurrentImageIndex(prev => (prev < selectedItem.images.length - 1 ? prev + 1 : 0))}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/80 backdrop-blur rounded-full text-stone-900 shadow-md opacity-0 group-hover/carousel:opacity-100 transition-opacity"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                    
+                    {/* Pagination Dots */}
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+                      {selectedItem.images.map((_: any, idx: number) => (
+                        <button
+                          key={idx}
+                          onClick={() => setCurrentImageIndex(idx)}
+                          className={`w-1.5 h-1.5 rounded-full transition-all ${currentImageIndex === idx ? 'bg-stone-900 w-4' : 'bg-stone-300'}`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col overflow-y-auto">
-              <div className="flex justify-between items-start mb-6">
+
+            <div className="w-full md:w-2/5 p-6 md:p-10 flex flex-col overflow-y-auto bg-white border-l border-stone-50">
+              <div className="flex justify-between items-start mb-8">
                 <div className="flex-1 min-w-0 pr-4">
                   {isEditMode ? (
-                    <div className="space-y-4 pr-4">
+                    <div className="space-y-4">
                       <div className="space-y-1">
                         <label className="text-[10px] uppercase tracking-wider text-stone-400 font-medium">Category</label>
                         <select 
@@ -421,24 +473,43 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                     </div>
                   ) : (
                     <>
-                      <p className="text-xs uppercase tracking-wider text-stone-400 font-medium mb-1">{selectedItem.category}</p>
-                      <h2 className="text-2xl font-serif text-stone-900 truncate">{selectedItem.brand || "Unknown Brand"}</h2>
-                      <p className="text-stone-500 font-light mt-1 truncate">{selectedItem.name || "No Name"}</p>
+                      <p className="text-xs uppercase tracking-wider text-stone-400 font-medium mb-1.5">{selectedItem.category}</p>
+                      <h2 className="text-3xl font-serif text-stone-900 truncate" title={selectedItem.brand || "Unknown Brand"}>{selectedItem.brand || "Unknown Brand"}</h2>
+                      <div className="relative">
+                        <p 
+                          className="text-stone-500 font-light mt-1.5 truncate text-lg cursor-help" 
+                          onClick={() => setShowNameTooltip(!showNameTooltip)}
+                        >
+                          {selectedItem.name || "No Name"}
+                        </p>
+                        {showNameTooltip && (
+                          <div className="absolute top-full left-0 z-50 mt-2 p-3 bg-stone-900 text-white text-sm rounded-xl shadow-xl max-w-xs animate-in fade-in zoom-in-95 duration-200">
+                            {selectedItem.name || "No Name"}
+                            <div className="absolute -top-1 left-4 w-2 h-2 bg-stone-900 rotate-45" />
+                          </div>
+                        )}
+                      </div>
                     </>
                   )}
                 </div>
-                <div className="flex gap-2">
+                
+                {/* Unified Button Group to prevent overlap */}
+                <div className="flex items-center gap-1 shrink-0">
                   {!isEditMode && (
                     <button 
                       onClick={() => handleEditClick(selectedItem)}
-                      className="p-2 hover:bg-stone-100 rounded-full text-stone-400 hover:text-stone-600 transition-colors"
+                      className="p-2.5 hover:bg-stone-100 rounded-full text-stone-400 hover:text-stone-900 transition-colors"
                       title="編集"
                     >
-                      <Edit3 className="h-5 w-5" />
+                      <Edit3 className="h-5 w-5" strokeWidth={1.5} />
                     </button>
                   )}
-                  <button onClick={() => { setSelectedItem(null); setIsEditMode(false); }} className="p-2 hover:bg-stone-100 rounded-full text-stone-400 transition-colors">
-                    <X className="h-5 w-5" />
+                  <button 
+                    onClick={() => { setSelectedItem(null); setIsEditMode(false); setCurrentImageIndex(0); setShowNameTooltip(false); }} 
+                    className="p-2.5 hover:bg-stone-100 rounded-full text-stone-400 hover:text-stone-900 transition-colors"
+                    title="閉じる"
+                  >
+                    <X className="h-6 w-6" strokeWidth={1.5} />
                   </button>
                 </div>
               </div>
@@ -457,13 +528,34 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                         />
                       </div>
                       <div className="space-y-1">
+                        <label className="text-[10px] uppercase tracking-wider text-stone-400 font-medium">Color</label>
+                        <input 
+                          type="text"
+                          className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2 text-sm focus:border-stone-400 focus:outline-none"
+                          value={editFormData.color}
+                          onChange={e => setEditFormData(prev => ({ ...prev, color: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-1">
                         <label className="text-[10px] uppercase tracking-wider text-stone-400 font-medium">Season</label>
                         <select 
                           className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2 text-sm focus:border-stone-400 focus:outline-none"
                           value={editFormData.season}
                           onChange={e => setEditFormData(prev => ({ ...prev, season: e.target.value }))}
                         >
-                          {["Spring", "Summer", "Autumn", "Winter", "All"].map(s => (
+                          {["夏", "春秋", "春夏秋", "春秋冬", "冬", "オール"].map(s => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase tracking-wider text-stone-400 font-medium">Status</label>
+                        <select 
+                          className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2 text-sm focus:border-stone-400 focus:outline-none"
+                          value={editFormData.status}
+                          onChange={e => setEditFormData(prev => ({ ...prev, status: e.target.value }))}
+                        >
+                          {["available", "washing", "cleaning", "archived"].map(s => (
                             <option key={s} value={s}>{s}</option>
                           ))}
                         </select>
@@ -477,18 +569,6 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                         value={editFormData.source}
                         onChange={e => setEditFormData(prev => ({ ...prev, source: e.target.value }))}
                       />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase tracking-wider text-stone-400 font-medium">Status</label>
-                      <select 
-                        className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2 text-sm focus:border-stone-400 focus:outline-none"
-                        value={editFormData.status}
-                        onChange={e => setEditFormData(prev => ({ ...prev, status: e.target.value }))}
-                      >
-                        {["available", "washing", "cleaning", "archived"].map(s => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
                     </div>
                     <div className="flex gap-2 pt-4">
                       <button 
@@ -514,8 +594,16 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                         <p className="font-medium text-stone-900">¥{selectedItem.price?.toLocaleString() || "---"}</p>
                       </div>
                       <div className="min-w-0">
+                        <p className="text-stone-400 mb-1">Color</p>
+                        <p className="font-medium text-stone-900">{selectedItem.color || "---"}</p>
+                      </div>
+                      <div className="min-w-0">
                         <p className="text-stone-400 mb-1">Season</p>
                         <p className="font-medium text-stone-900">{selectedItem.season || "---"}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-stone-400 mb-1">Status</p>
+                        <p className="font-medium text-stone-900 capitalize">{selectedItem.status}</p>
                       </div>
                       <div className="col-span-2 min-w-0">
                         <p className="text-stone-400 mb-1">Source</p>
@@ -531,10 +619,6 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                         ) : (
                           <p className="font-medium text-stone-900 truncate">{selectedItem.source || "---"}</p>
                         )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-stone-400 mb-1">Status</p>
-                        <p className="font-medium text-stone-900 capitalize">{selectedItem.status}</p>
                       </div>
                     </div>
 

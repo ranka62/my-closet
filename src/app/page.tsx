@@ -14,7 +14,8 @@ export default async function Home() {
   const items = await prisma.item.findMany({
     where: { userId: session.user.id },
     include: {
-      coordinates: true // 着用回数計算用
+      coordinates: true, // 着用回数計算用
+      images: true      // 複数画像用
     },
     orderBy: { createdAt: "desc" }
   })

@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
-    const { imageUrl, category, brand, name, price, season, source, status } = body
+    const { imageUrl, images, category, brand, name, price, season, source, status, color } = body
 
     if (!imageUrl || !category) {
       return new NextResponse("Missing required fields", { status: 400 })
@@ -27,7 +27,14 @@ export async function POST(req: Request) {
         price,
         season,
         source,
-        status: status || "available"
+        color,
+        status: status || "available",
+        images: {
+          create: (images || []).map((url: string) => ({ url }))
+        }
+      },
+      include: {
+        images: true
       }
     })
 

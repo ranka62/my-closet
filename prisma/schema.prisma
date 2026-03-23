@@ -62,19 +62,28 @@ model Item {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  imageUrl  String
+  imageUrl  String   // Main image (for backward compatibility and quick access)
   category  String   // Tops, Bottoms, Outerwear, Shoes, Accessories, Dresses, etc.
   brand     String?
+  color     String?  // New field
   source    String?  // Store or URL
   price     Int?
-  season    String?  // Spring, Summer, Autumn, Winter, All
+  season    String?  // Summer, Spring/Autumn, Spring/Summer/Autumn, Spring/Autumn/Winter, Winter, All
   name      String?
   status    String   @default("available") // available, washing, cleaning, archived
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  images      ItemImage[]
   coordinates CoordinateItem[]
   packingLists PackingListItem[]
+}
+
+model ItemImage {
+  id     String @id @default(cuid())
+  itemId String
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  url    String
 }
 
 model Coordinate {
