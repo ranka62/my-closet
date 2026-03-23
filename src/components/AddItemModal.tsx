@@ -92,10 +92,14 @@ export default function AddItemModal({
         const newItem = await res.json()
         onAdd(newItem)
         onClose()
+      } else {
+        const errorText = await res.text()
+        console.error("Save failed:", errorText)
+        alert(`保存に失敗しました: ${errorText || res.statusText}`)
       }
     } catch (error) {
-      console.error(error)
-      alert("エラーが発生しました")
+      console.error("Network error:", error)
+      alert("ネットワークエラーが発生しました。通信環境を確認してください。")
     } finally {
       setLoading(false)
     }
