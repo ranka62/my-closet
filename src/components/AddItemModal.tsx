@@ -20,6 +20,7 @@ export default function AddItemModal({
     brand: "",
     name: "",
     color: "",
+    purchaseDate: "", // Added field
     price: "",
     season: "オール",
     source: "",
@@ -334,7 +335,7 @@ export default function AddItemModal({
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-2 gap-5">
             <div className="space-y-2">
               <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider">Price (¥)</label>
               <input 
@@ -346,22 +347,32 @@ export default function AddItemModal({
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider flex justify-between">
-                Source 
-                {formData.source && formData.source.startsWith("http") && (
-                  <button type="button" onClick={fetchUrlInfo} className="text-stone-900 font-bold hover:underline normal-case">
-                    URLから情報を取得
-                  </button>
-                )}
-              </label>
+              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider">Purchase Date</label>
               <input 
-                type="text" 
-                placeholder="Store or URL"
+                type="date" 
                 className="w-full border border-stone-200 bg-stone-50 rounded-xl p-3 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors placeholder:text-stone-300"
-                value={formData.source}
-                onChange={e => setFormData(prev => ({ ...prev, source: e.target.value }))}
+                value={formData.purchaseDate}
+                onChange={e => setFormData(prev => ({ ...prev, purchaseDate: e.target.value }))}
               />
             </div>
+          </div>
+          
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider flex justify-between">
+              Source 
+              {formData.source && formData.source.startsWith("http") && (
+                <button type="button" onClick={fetchUrlInfo} className="text-stone-900 font-bold hover:underline normal-case">
+                  URLから情報を取得
+                </button>
+              )}
+            </label>
+            <input 
+              type="text" 
+              placeholder="Store or URL"
+              className="w-full border border-stone-200 bg-stone-50 rounded-xl p-3 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors placeholder:text-stone-300"
+              value={formData.source}
+              onChange={e => setFormData(prev => ({ ...prev, source: e.target.value }))}
+            />
           </div>
           
           <div className="pt-6 flex justify-end gap-3 border-t border-stone-100">

@@ -21,6 +21,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
     brand: "",
     name: "",
     color: "",
+    purchaseDate: "", // Added field
     price: "",
     season: "",
     source: "",
@@ -45,6 +46,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
       brand: item.brand || "",
       name: item.name || "",
       color: item.color || "",
+      purchaseDate: item.purchaseDate ? new Date(item.purchaseDate).toISOString().split('T')[0] : "",
       price: item.price?.toString() || "",
       season: item.season || "オール",
       source: item.source || "",
@@ -62,7 +64,8 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...editFormData,
-          price: editFormData.price ? parseInt(editFormData.price) : null
+          price: editFormData.price ? parseInt(editFormData.price) : null,
+          purchaseDate: editFormData.purchaseDate ? new Date(editFormData.purchaseDate) : null
         })
       })
       if (res.ok) {
@@ -383,6 +386,14 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
       {selectedItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => { setSelectedItem(null); setIsEditMode(false); setCurrentImageIndex(0); setShowNameTooltip(false); }}>
           <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col md:flex-row animate-in zoom-in-95 duration-200 relative" onClick={e => e.stopPropagation()}>
+            {/* Top Right Close Button for entire modal */}
+            <button 
+              onClick={() => { setSelectedItem(null); setIsEditMode(false); setCurrentImageIndex(0); setShowNameTooltip(false); }} 
+              className="absolute top-4 right-4 z-50 p-2 bg-white/80 backdrop-blur-md rounded-full text-stone-400 hover:text-stone-900 transition-all shadow-sm md:shadow-none md:bg-transparent"
+              title="閉じる"
+            >
+              <X className="h-6 w-6" strokeWidth={1.5} />
+            </button>
             
             <div className="w-full md:w-3/5 aspect-square md:aspect-auto bg-stone-100 relative group/carousel">
               {/* Multiple Images Display with Arrows */}
@@ -495,23 +506,16 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                 </div>
                 
                 {/* Unified Button Group to prevent overlap */}
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-3 shrink-0 ml-4">
                   {!isEditMode && (
                     <button 
                       onClick={() => handleEditClick(selectedItem)}
-                      className="p-2.5 hover:bg-stone-100 rounded-full text-stone-400 hover:text-stone-900 transition-colors"
+                      className="p-3 hover:bg-stone-100 rounded-full text-stone-400 hover:text-stone-900 transition-colors bg-stone-50"
                       title="編集"
                     >
                       <Edit3 className="h-5 w-5" strokeWidth={1.5} />
                     </button>
                   )}
-                  <button 
-                    onClick={() => { setSelectedItem(null); setIsEditMode(false); setCurrentImageIndex(0); setShowNameTooltip(false); }} 
-                    className="p-2.5 hover:bg-stone-100 rounded-full text-stone-400 hover:text-stone-900 transition-colors"
-                    title="閉じる"
-                  >
-                    <X className="h-6 w-6" strokeWidth={1.5} />
-                  </button>
                 </div>
               </div>
 
@@ -526,6 +530,15 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                           className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2 text-sm focus:border-stone-400 focus:outline-none"
                           value={editFormData.price}
                           onChange={e => setEditFormData(prev => ({ ...prev, price: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase tracking-wider text-stone-400 font-medium">Purchase Date</label>
+                        <input 
+                          type="date"
+                          className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2 text-sm focus:border-stone-400 focus:outline-none"
+                          value={editFormData.purchaseDate}
+                          onChange={e => setEditFormData(prev => ({ ...prev, purchaseDate: e.target.value }))}
                         />
                       </div>
                       <div className="space-y-1">
@@ -593,6 +606,10 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                       <div className="min-w-0">
                         <p className="text-stone-400 mb-1">Price</p>
                         <p className="font-medium text-stone-900">¥{selectedItem.price?.toLocaleString() || "---"}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-stone-400 mb-1">Purchase Date</p>
+                        <p className="font-medium text-stone-900">{selectedItem.purchaseDate ? new Date(selectedItem.purchaseDate).toLocaleDateString('ja-JP') : "---"}</p>
                       </div>
                       <div className="min-w-0">
                         <p className="text-stone-400 mb-1">Color</p>

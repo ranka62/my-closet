@@ -16,7 +16,7 @@ export async function PATCH(
 
     const { id } = await params
     const body = await req.json()
-    const { category, brand, name, price, season, source, status, color } = body
+    const { category, brand, name, price, season, source, status, color, purchaseDate } = body
 
     const item = await prisma.item.update({
       where: {
@@ -31,7 +31,8 @@ export async function PATCH(
         season,
         source,
         status,
-        color
+        color,
+        purchaseDate: purchaseDate ? new Date(purchaseDate) : null
       }
     })
 

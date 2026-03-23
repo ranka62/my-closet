@@ -66,6 +66,7 @@ model Item {
   category  String   // Tops, Bottoms, Outerwear, Shoes, Accessories, Dresses, etc.
   brand     String?
   color     String?  // New field
+  purchaseDate DateTime? // Added field
   source    String?  // Store or URL
   price     Int?
   season    String?  // Summer, Spring/Autumn, Spring/Summer/Autumn, Spring/Autumn/Winter, Winter, All
