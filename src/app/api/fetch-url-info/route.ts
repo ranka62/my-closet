@@ -60,7 +60,12 @@ JSONフォーマットのみを出力してください:
         config: { responseMimeType: "application/json" }
       })
       
-      return NextResponse.json(JSON.parse(response.text))
+      const text = response.text
+      if (!text) {
+        throw new Error("No response from Gemini")
+      }
+
+      return NextResponse.json(JSON.parse(text))
     }
 
     // APIキーがない場合は最低限の情報を返す
