@@ -51,24 +51,66 @@ export default function AddItemModal({
     }
   }
 
+  const compressImage = (base64Str: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = base64Str;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1200; // 最大幅を1200pxに制限
+        const MAX_HEIGHT = 1200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        // JPEG形式で画質を0.7（70%）に落として圧縮
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      };
+    });
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
       const reader = new FileReader()
       reader.onloadend = async () => {
-        let resultImage = reader.result as string
+        const rawImage = reader.result as string
         
-        // 背景切り抜き処理は省略
-        
-        setFormData(prev => ({ 
-          ...prev, 
-          imageUrl: resultImage,
-          brand: "", // Clear old data to show it's updating
-          name: "" 
-        }))
-        
-        // 画像解析APIを呼び出す
-        await analyzeImage(resultImage)
+        setAnalyzing(true)
+        try {
+          // 画像を圧縮
+          const compressedImage = await compressImage(rawImage)
+          
+          setFormData(prev => ({ 
+            ...prev, 
+            imageUrl: compressedImage,
+            brand: "", 
+            name: "" 
+          }))
+          
+          // 圧縮した画像で解析
+          await analyzeImage(compressedImage)
+        } catch (error) {
+          console.error("Image processing failed", error)
+        } finally {
+          setAnalyzing(false)
+        }
       }
       reader.readAsDataURL(file)
     }
