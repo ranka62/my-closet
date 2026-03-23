@@ -20,6 +20,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
     category: "",
     brand: "",
     name: "",
+    color: "",
     price: "",
     season: "",
     source: "",
