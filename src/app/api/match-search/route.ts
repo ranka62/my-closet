@@ -42,15 +42,15 @@ ${items.map((item: any) => `- ID: ${item.id} | カテゴリ: ${item.category} | 
 `
 
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-3-flash-preview",
       contents: [
-        prompt,
         {
           inlineData: {
             data: base64Data,
             mimeType: "image/jpeg"
           }
-        }
+        },
+        prompt
       ]
     })
 
