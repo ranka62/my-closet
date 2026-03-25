@@ -42,15 +42,15 @@ export async function POST(req: Request) {
 `
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash",
+      model: "gemini-2.0-flash",
       contents: [
+        { text: prompt },
         {
           inlineData: {
             data: base64Data,
             mimeType: "image/jpeg"
           }
-        },
-        { text: prompt }
+        }
       ],
       config: {
         responseMimeType: "application/json",
