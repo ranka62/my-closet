@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Item } from "@prisma/client"
 import { Sparkles, Save, ThumbsUp, ThumbsDown, ThermometerSun, MapPin, MessageSquare, Camera } from "lucide-react"
 
@@ -169,21 +169,23 @@ export default function StylistClient({ items }: { items: Item[] }) {
     }
   }
 
-  const suggestedItems = suggestion?.itemIds
-    .map(id => items.find(i => i.id === id))
-    .filter(Boolean) as Item[]
-
+  const suggestedItems = useMemo(() => {
+    if (!suggestion) return []
+    return suggestion.itemIds
+      .map(id => items.find(i => i.id === id))
+      .filter(Boolean) as Item[]
+  }, [suggestion, items])
   return (
-    <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in duration-500 pb-20">
-      <div className="text-center space-y-4 py-8">
-        <div className="inline-flex items-center justify-center p-3 bg-stone-100 rounded-full mb-2">
-          <Sparkles className="h-6 w-6 text-stone-700" strokeWidth={1.5} />
+    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20">
+      <div className="text-center space-y-2 py-4">
+        <div className="inline-flex items-center justify-center p-2 bg-stone-100 rounded-full mb-1">
+          <Sparkles className="h-5 w-5 text-stone-700" strokeWidth={1.5} />
         </div>
-        <h1 className="text-4xl font-serif tracking-tight text-stone-900">AI Stylist</h1>
-        <p className="text-stone-500 font-light max-w-lg mx-auto">AIがあなたの専属スタイリストになります。</p>
+        <h1 className="text-3xl font-serif tracking-tight text-stone-900">AI Stylist</h1>
+        <p className="text-stone-500 text-xs font-light max-w-lg mx-auto">AIがあなたの専属スタイリストになります。</p>
       </div>
 
-      <div className="flex justify-center mb-8">
+      <div className="flex justify-center mb-4">
         <div className="bg-stone-100 p-1 rounded-full flex gap-1">
           <button 
             onClick={() => setActiveTab("suggest")}
@@ -202,8 +204,8 @@ export default function StylistClient({ items }: { items: Item[] }) {
 
       {activeTab === "suggest" ? (
         <>
-          <div className="bg-white p-8 sm:p-10 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-stone-100 space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="bg-white p-6 sm:p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-stone-100 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-3">
             <label className="flex items-center gap-2 text-xs font-medium text-stone-500 uppercase tracking-wider">
               <ThermometerSun className="h-4 w-4" /> Temperature

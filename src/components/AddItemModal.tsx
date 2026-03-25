@@ -197,16 +197,16 @@ export default function AddItemModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between p-6 border-b border-stone-100">
+        <div className="flex items-center justify-between p-5 sm:p-6 border-b border-stone-100 shrink-0">
           <h2 className="text-xl font-serif tracking-tight text-stone-900">Add New Item</h2>
           <button onClick={onClose} className="p-2 hover:bg-stone-100 rounded-full transition-colors text-stone-400 hover:text-stone-600">
             <X className="h-5 w-5" strokeWidth={1.5} />
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-6">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto overflow-x-hidden flex-1 space-y-6">
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider">Photos <span className="text-red-400">*</span></label>
               <label className="flex items-center gap-2 text-xs text-stone-600 cursor-pointer">
                 <input 
@@ -219,9 +219,9 @@ export default function AddItemModal({
               </label>
             </div>
             
-            <div className="flex gap-4 overflow-x-auto pb-2">
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory">
               {formData.images.map((img, idx) => (
-                <div key={idx} className="relative w-32 h-32 shrink-0 rounded-2xl border border-stone-200 overflow-hidden bg-stone-50">
+                <div key={idx} className="relative w-28 h-28 sm:w-32 sm:h-32 shrink-0 rounded-2xl border border-stone-200 overflow-hidden bg-stone-50 snap-start">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={img} alt={`Preview ${idx + 1}`} className="w-full h-full object-contain mix-blend-multiply p-2" />
                   <button 
@@ -237,13 +237,13 @@ export default function AddItemModal({
                 </div>
               ))}
               
-              <div className={`shrink-0 w-32 h-32 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-colors relative ${formData.images.length === 0 ? 'w-full h-48' : 'border-stone-200 hover:border-stone-300 hover:bg-stone-50'}`}>
-                <div className="space-y-2 text-center">
+              <div className={`shrink-0 w-28 h-28 sm:w-32 sm:h-32 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-colors relative snap-start ${formData.images.length === 0 ? 'w-full h-40' : 'border-stone-200 hover:border-stone-300 hover:bg-stone-50'}`}>
+                <div className="space-y-1 text-center">
                   <Upload className="h-5 w-5 text-stone-400 mx-auto" strokeWidth={1.5} />
                   {formData.images.length === 0 && (
                     <div>
                       <p className="text-sm font-medium text-stone-700">Click to upload</p>
-                      <p className="text-xs text-stone-400">Multiple images allowed</p>
+                      <p className="text-[10px] text-stone-400">Multiple images allowed</p>
                     </div>
                   )}
                 </div>
@@ -267,18 +267,18 @@ export default function AddItemModal({
               <button 
                 type="button"
                 onClick={() => analyzeImage(formData.images[0])}
-                className="text-xs font-medium text-stone-600 hover:text-stone-900 flex items-center gap-1 mt-2"
+                className="text-[10px] font-medium text-stone-600 hover:text-stone-900 flex items-center gap-1 mt-1"
               >
                 <Sparkles className="h-3 w-3" /> 1枚目の画像で再解析
               </button>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-5">
-            <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
               <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider">Category <span className="text-red-400">*</span></label>
               <select 
-                className="w-full border border-stone-200 bg-stone-50 rounded-xl p-3 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors"
+                className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2.5 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors"
                 value={formData.category}
                 onChange={e => setFormData(prev => ({ ...prev, category: e.target.value }))}
               >
@@ -287,10 +287,10 @@ export default function AddItemModal({
                 ))}
               </select>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider">Season</label>
               <select 
-                className="w-full border border-stone-200 bg-stone-50 rounded-xl p-3 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors"
+                className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2.5 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors"
                 value={formData.season}
                 onChange={e => setFormData(prev => ({ ...prev, season: e.target.value }))}
               >
@@ -301,63 +301,63 @@ export default function AddItemModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-5">
-            <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
               <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider">Brand</label>
               <input 
                 type="text" 
                 placeholder="e.g. ZARA"
-                className="w-full border border-stone-200 bg-stone-50 rounded-xl p-3 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors placeholder:text-stone-300"
+                className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2.5 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors placeholder:text-stone-300"
                 value={formData.brand}
                 onChange={e => setFormData(prev => ({ ...prev, brand: e.target.value }))}
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider">Color</label>
               <input 
                 type="text" 
                 placeholder="e.g. ホワイト, ブラック"
-                className="w-full border border-stone-200 bg-stone-50 rounded-xl p-3 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors placeholder:text-stone-300"
+                className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2.5 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors placeholder:text-stone-300"
                 value={formData.color}
                 onChange={e => setFormData(prev => ({ ...prev, color: e.target.value }))}
               />
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider">Item Name</label>
             <input 
               type="text" 
               placeholder="e.g. 白のオーバーサイズシャツ"
-              className="w-full border border-stone-200 bg-stone-50 rounded-xl p-3 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors placeholder:text-stone-300"
+              className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2.5 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors placeholder:text-stone-300"
               value={formData.name}
               onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-5">
-            <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
               <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider">Price (¥)</label>
               <input 
                 type="number" 
                 placeholder="5000"
-                className="w-full border border-stone-200 bg-stone-50 rounded-xl p-3 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors placeholder:text-stone-300"
+                className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2.5 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors placeholder:text-stone-300"
                 value={formData.price}
                 onChange={e => setFormData(prev => ({ ...prev, price: e.target.value }))}
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider">Purchase Date</label>
               <input 
                 type="date" 
-                className="w-full border border-stone-200 bg-stone-50 rounded-xl p-3 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors placeholder:text-stone-300"
+                className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2.5 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors placeholder:text-stone-300"
                 value={formData.purchaseDate}
                 onChange={e => setFormData(prev => ({ ...prev, purchaseDate: e.target.value }))}
               />
             </div>
           </div>
           
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider flex justify-between">
               Source 
               {formData.source && formData.source.startsWith("http") && (
@@ -369,24 +369,24 @@ export default function AddItemModal({
             <input 
               type="text" 
               placeholder="Store or URL"
-              className="w-full border border-stone-200 bg-stone-50 rounded-xl p-3 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors placeholder:text-stone-300"
+              className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2.5 text-sm focus:border-stone-400 focus:ring-0 focus:bg-white transition-colors placeholder:text-stone-300"
               value={formData.source}
               onChange={e => setFormData(prev => ({ ...prev, source: e.target.value }))}
             />
           </div>
           
-          <div className="pt-6 flex justify-end gap-3 border-t border-stone-100">
+          <div className="pt-4 flex justify-end gap-3 border-t border-stone-100 shrink-0">
             <button 
               type="button" 
               onClick={onClose}
-              className="px-6 py-2.5 text-sm font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-50 rounded-full transition-colors"
+              className="px-6 py-2 text-sm font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-50 rounded-full transition-colors"
             >
               Cancel
             </button>
             <button 
               type="submit"
               disabled={loading}
-              className="px-8 py-2.5 text-sm font-medium bg-stone-900 text-white rounded-full hover:bg-stone-800 disabled:opacity-50 transition-colors shadow-sm"
+              className="px-8 py-2 text-sm font-medium bg-stone-900 text-white rounded-full hover:bg-stone-800 disabled:opacity-50 transition-colors shadow-sm"
             >
               {loading ? "Saving..." : "Save Item"}
             </button>

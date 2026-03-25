@@ -1,16 +1,33 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { Item } from "@prisma/client"
-import { Plus, Search, Filter, Shirt, X, Calculator, ImagePlus, Sparkles, Trash2, Edit3, ChevronLeft, ChevronRight } from "lucide-react"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
+import { Plus, Search, Filter, Shirt, X, Calculator, ImagePlus, Sparkles, Trash2, Edit3, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react"
 import AddItemModal from "./AddItemModal"
 
 const CATEGORIES = ["すべて", "トップス", "ボトムス", "アウター", "シューズ", "アクセサリー", "ワンピース", "バッグ", "雑貨・ライフスタイル", "ガジェット", "その他"]
 
+const SORT_OPTIONS = [
+  { label: "登録順 (新)", value: "created_desc" },
+  { label: "登録順 (旧)", value: "created_asc" },
+  { label: "購入順 (新)", value: "purchase_desc" },
+  { label: "購入順 (旧)", value: "purchase_asc" },
+  { label: "価格が高い順", value: "price_desc" },
+  { label: "価格が安い順", value: "price_asc" },
+  { label: "着用頻度が高い順", value: "freq_desc" },
+  { label: "着用頻度が低い順", value: "freq_asc" },
+]
+
 export default function ClosetClient({ initialItems }: { initialItems: any[] }) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const pathname = usePathname()
+  
   const [items, setItems] = useState<any[]>(initialItems)
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState("すべて")
+  const [sortBy, setSortBy] = useState("created_desc")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<any | null>(null)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
@@ -21,7 +38,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
     brand: "",
     name: "",
     color: "",
-    purchaseDate: "", // Added field
+    purchaseDate: "",
     price: "",
     season: "",
     source: "",
@@ -29,6 +46,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
   })
   const [isMatching, setIsMatching] = useState(false) 
   const [updating, setUpdating] = useState(false)
+  const [fetchingUrl, setFetchingUrl] = useState(false)
 
   // Image Match Search State
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -38,21 +56,92 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
     reason: string
   } | null>(null)
 
-  // ... (existing states)
+  // URLからアイテムIDを取得して詳細を表示
+  useEffect(() => {
+    const editId = searchParams.get('edit')
+    if (editId) {
+      const item = items.find(i => i.id === editId)
+      if (item) {
+        setSelectedItem(item)
+        setIsEditMode(true)
+        // フォームデータも初期化
+        setEditFormData({
+          category: item.category,
+          brand: item.brand || "",
+          name: item.name || "",
+          color: item.color || "",
+          purchaseDate: item.purchaseDate ? new Date(item.purchaseDate).toISOString().split('T')[0] : "",
+          price: item.price?.toString() || "",
+          season: item.season || "オール",
+          source: item.source || "",
+          status: item.status || "available"
+        })
+      }
+    } else {
+      const itemId = searchParams.get('item')
+      if (itemId) {
+        const item = items.find(i => i.id === itemId)
+        if (item) {
+          setSelectedItem(item)
+          setIsEditMode(false)
+        }
+      }
+    }
+  }, [searchParams, items])
+
+  const openItemDetails = (item: any) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('item', item.id)
+    params.delete('edit')
+    router.push(`${pathname}?${params.toString()}`, { scroll: false })
+  }
+
+  const closeItemDetails = () => {
+    setSelectedItem(null)
+    setIsEditMode(false)
+    setCurrentImageIndex(0)
+    setShowNameTooltip(false)
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('item')
+    params.delete('edit')
+    router.push(`${pathname}?${params.toString()}`, { scroll: false })
+  }
 
   const handleEditClick = (item: any) => {
-    setEditFormData({
-      category: item.category,
-      brand: item.brand || "",
-      name: item.name || "",
-      color: item.color || "",
-      purchaseDate: item.purchaseDate ? new Date(item.purchaseDate).toISOString().split('T')[0] : "",
-      price: item.price?.toString() || "",
-      season: item.season || "オール",
-      source: item.source || "",
-      status: item.status || "available"
-    })
-    setIsEditMode(true)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('edit', item.id)
+    params.delete('item')
+    router.push(`${pathname}?${params.toString()}`, { scroll: false })
+  }
+
+  const fetchUrlInfo = async () => {
+    if (!editFormData.source || !editFormData.source.startsWith("http")) return
+    setFetchingUrl(true)
+    try {
+      const res = await fetch("/api/fetch-url-info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: editFormData.source })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setEditFormData(prev => ({
+          ...prev,
+          name: data.name || prev.name,
+          brand: data.brand || prev.brand,
+          price: data.price?.toString() || prev.price,
+          category: data.category || prev.category,
+          color: data.color || prev.color
+        }))
+      } else {
+        alert("情報の取得に失敗しました")
+      }
+    } catch (error) {
+      console.error("Failed to fetch URL info", error)
+      alert("エラーが発生しました")
+    } finally {
+      setFetchingUrl(false)
+    }
   }
 
   const handleUpdateItem = async () => {
@@ -229,39 +318,72 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
     }
   }
 
-  const filteredItems = items.filter(item => {
-    const matchCategory = category === "すべて" || item.category === category
-    const matchSearch = search === "" || 
-      (item.name?.toLowerCase().includes(search.toLowerCase()) || 
-       item.brand?.toLowerCase().includes(search.toLowerCase()))
-    return matchCategory && matchSearch
-  })
+  const filteredItems = useMemo(() => {
+    let result = items.filter(item => {
+      const matchCategory = category === "すべて" || item.category === category
+      const matchSearch = search === "" || 
+        (item.name?.toLowerCase().includes(search.toLowerCase()) || 
+         item.brand?.toLowerCase().includes(search.toLowerCase()))
+      return matchCategory && matchSearch
+    })
 
-  const totalValue = items.reduce((sum, item) => sum + (item.price || 0), 0)
+    // Sorting
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case "created_desc":
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        case "created_asc":
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        case "purchase_desc":
+          const dateA = a.purchaseDate ? new Date(a.purchaseDate).getTime() : 0
+          const dateB = b.purchaseDate ? new Date(b.purchaseDate).getTime() : 0
+          return dateB - dateA
+        case "purchase_asc":
+          const dateA2 = a.purchaseDate ? new Date(a.purchaseDate).getTime() : Infinity
+          const dateB2 = b.purchaseDate ? new Date(b.purchaseDate).getTime() : Infinity
+          return dateA2 - dateB2
+        case "price_desc":
+          return (b.price || 0) - (a.price || 0)
+        case "price_asc":
+          return (a.price || 0) - (b.price || 0)
+        case "freq_desc":
+          return (b.coordinates?.length || 0) - (a.coordinates?.length || 0)
+        case "freq_asc":
+          return (a.coordinates?.length || 0) - (b.coordinates?.length || 0)
+        default:
+          return 0
+      }
+    })
+
+    return result
+  }, [items, category, search, sortBy])
+
+  const totalValue = useMemo(() => items.reduce((sum, item) => sum + (item.price || 0), 0), [items])
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 pb-6 border-b border-stone-200">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-serif tracking-tight">Wardrobe</h1>
-          <p className="text-sm text-stone-500 font-light">あなたのコレクション</p>
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex items-center justify-between pb-4 border-b border-stone-200">
+        <div className="space-y-0.5">
+          <h1 className="text-2xl sm:text-3xl font-serif tracking-tight">Wardrobe</h1>
+          <p className="text-[10px] sm:text-sm text-stone-500 font-light">あなたのコレクション</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3">
           <button
             onClick={handleDeclutterAnalysis}
             disabled={isDecluttering}
-            className="group flex items-center gap-2 bg-white border border-stone-200 text-stone-700 px-5 py-2.5 rounded-full hover:bg-stone-50 hover:border-stone-300 transition-all active:scale-95 shadow-sm disabled:opacity-50"
-            title="クローゼットの断捨離を提案"
+            className="group flex items-center justify-center gap-2 bg-white border border-stone-200 text-stone-700 p-2 sm:px-5 sm:py-2.5 rounded-full hover:bg-stone-50 hover:border-stone-300 transition-all active:scale-95 shadow-sm disabled:opacity-50"
+            title="整理"
           >
             {isDecluttering ? <Sparkles className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-stone-400" />}
             <span className="text-sm font-medium hidden sm:inline">整理</span>
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="group flex items-center gap-2 bg-white border border-stone-200 text-stone-700 px-5 py-2.5 rounded-full hover:bg-stone-50 hover:border-stone-300 transition-all active:scale-95 shadow-sm"
+            className="group flex items-center justify-center gap-2 bg-white border border-stone-200 text-stone-700 p-2 sm:px-5 sm:py-2.5 rounded-full hover:bg-stone-50 hover:border-stone-300 transition-all active:scale-95 shadow-sm"
+            title="似合う服"
           >
             <ImagePlus className="h-4 w-4" />
-            <span className="text-sm font-medium">これに合う服は？</span>
+            <span className="text-xs sm:text-sm font-medium hidden sm:inline">似合う服</span>
           </button>
           <input 
             type="file" 
@@ -272,10 +394,10 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
           />
           <button
             onClick={() => setIsModalOpen(true)}
-            className="group flex items-center gap-2 bg-stone-900 text-white px-5 py-2.5 rounded-full hover:bg-stone-800 transition-all active:scale-95"
+            className="group flex items-center justify-center gap-2 bg-stone-900 text-white px-3 py-2 sm:px-5 sm:py-2.5 rounded-full hover:bg-stone-800 transition-all active:scale-95"
           >
             <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
-            <span className="text-sm font-medium">アイテム追加</span>
+            <span className="text-xs sm:text-sm font-medium">追加</span>
           </button>
         </div>
       </div>
@@ -323,7 +445,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                         const item = items.find(i => i.id === id)
                         if (!item) return null
                         return (
-                          <div key={item.id} className="group cursor-pointer" onClick={() => setSelectedItem(item)}>
+                          <div key={item.id} className="group cursor-pointer" onClick={() => openItemDetails(item)}>
                             <div className="aspect-[3/4] bg-white rounded-xl overflow-hidden border border-stone-200 shadow-sm">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img src={item.imageUrl} alt="" className="w-full h-full object-cover mix-blend-multiply" />
@@ -365,7 +487,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                       const item = items.find(i => i.id === id)
                       if (!item) return null
                       return (
-                        <div key={item.id} className="w-24 shrink-0 group cursor-pointer" onClick={() => setSelectedItem(item)}>
+                        <div key={item.id} className="w-24 shrink-0 group cursor-pointer" onClick={() => openItemDetails(item)}>
                           <div className="aspect-[3/4] bg-stone-50 rounded-xl overflow-hidden border border-stone-100 mb-2">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={item.imageUrl} alt="" className="w-full h-full object-cover mix-blend-multiply" />
@@ -382,9 +504,9 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-2 rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.02)] border border-stone-100">
-        <div className="flex flex-1 w-full gap-2">
-          <div className="flex-1 flex items-center gap-2 bg-stone-50 px-4 py-2.5 rounded-xl border border-transparent focus-within:border-stone-200 focus-within:bg-white transition-colors">
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-1.5 rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.02)] border border-stone-100">
+        <div className="flex flex-col sm:flex-row flex-1 w-full gap-2">
+          <div className="flex-1 flex items-center gap-2 bg-stone-50 px-4 py-2 rounded-xl border border-transparent focus-within:border-stone-200 focus-within:bg-white transition-colors">
             <Search className="h-4 w-4 text-stone-400" />
             <input
               type="text"
@@ -394,7 +516,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="flex items-center gap-2 bg-stone-50 px-4 py-2.5 rounded-xl border border-transparent focus-within:border-stone-200 focus-within:bg-white transition-colors">
+          <div className="flex items-center gap-2 bg-stone-50 px-4 py-2 rounded-xl border border-transparent focus-within:border-stone-200 focus-within:bg-white transition-colors">
             <Filter className="h-4 w-4 text-stone-400" />
             <select
               className="bg-transparent border-none outline-none w-full text-sm text-stone-700 cursor-pointer"
@@ -404,18 +526,28 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
               {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
+          <div className="flex items-center gap-2 bg-stone-50 px-4 py-2 rounded-xl border border-transparent focus-within:border-stone-200 focus-within:bg-white transition-colors">
+            <ArrowUpDown className="h-4 w-4 text-stone-400" />
+            <select
+              className="bg-transparent border-none outline-none w-full text-sm text-stone-700 cursor-pointer"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+            >
+              {SORT_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+            </select>
+          </div>
         </div>
         <div className="text-xs font-medium text-stone-400 uppercase tracking-widest px-4">
           {items.length} items / ¥{totalValue.toLocaleString()}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-10">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-4 gap-y-6">
         {filteredItems.map(item => {
           const wearCount = item.coordinates?.length || 0;
           return (
-            <div key={item.id} className="group cursor-pointer" onClick={() => setSelectedItem(item)}>
-              <div className="aspect-[3/4] relative bg-stone-100 rounded-2xl overflow-hidden mb-4">
+            <div key={item.id} className="group cursor-pointer" onClick={() => openItemDetails(item)}>
+              <div className="aspect-[3/4] relative bg-stone-100 rounded-2xl overflow-hidden mb-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={item.imageUrl}
@@ -433,6 +565,11 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                 <p className="text-[10px] uppercase tracking-wider text-stone-400 font-medium">{item.category}</p>
                 <h3 className="font-medium text-sm text-stone-900 truncate">{item.brand || "Unknown"}</h3>
                 <p className="text-xs text-stone-500 truncate font-light">{item.name}</p>
+                {item.purchaseDate && (
+                  <p className="text-[10px] text-stone-400 font-light">
+                    購入日: {new Date(item.purchaseDate).toLocaleDateString('ja-JP')}
+                  </p>
+                )}
               </div>
             </div>
           )
@@ -454,11 +591,11 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
 
       {/* Item Details Modal */}
       {selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => { setSelectedItem(null); setIsEditMode(false); setCurrentImageIndex(0); setShowNameTooltip(false); }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={closeItemDetails}>
           <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col md:flex-row animate-in zoom-in-95 duration-200 relative" onClick={e => e.stopPropagation()}>
             {/* Top Right Close Button for entire modal */}
             <button 
-              onClick={() => { setSelectedItem(null); setIsEditMode(false); setCurrentImageIndex(0); setShowNameTooltip(false); }} 
+              onClick={closeItemDetails} 
               className="absolute top-4 right-4 z-50 p-2 bg-white/80 backdrop-blur-md rounded-full text-stone-400 hover:text-stone-900 transition-all shadow-sm md:shadow-none md:bg-transparent"
               title="閉じる"
             >
@@ -646,7 +783,19 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase tracking-wider text-stone-400 font-medium">Source URL / Store</label>
+                      <label className="text-[10px] uppercase tracking-wider text-stone-400 font-medium flex justify-between items-center">
+                        Source URL / Store
+                        {editFormData.source && editFormData.source.startsWith("http") && (
+                          <button 
+                            type="button" 
+                            onClick={fetchUrlInfo} 
+                            disabled={fetchingUrl}
+                            className="text-stone-900 font-bold hover:underline normal-case disabled:opacity-50"
+                          >
+                            {fetchingUrl ? "取得中..." : "URLから情報を取得"}
+                          </button>
+                        )}
+                      </label>
                       <input 
                         type="text"
                         className="w-full border border-stone-200 bg-stone-50 rounded-xl p-2 text-sm focus:border-stone-400 focus:outline-none"
