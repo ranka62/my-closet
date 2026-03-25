@@ -12,15 +12,17 @@ export async function POST(req: Request) {
 
     const { temperature, scene, request, items } = await req.json()
 
-    if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
-      // Mock response for development if no key
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
+    console.log("[STYLIST_POST] API Key present:", !!apiKey, apiKey ? apiKey.substring(0, 5) + "..." : "none")
+    if (!apiKey || apiKey === "YOUR_API_KEY" || apiKey.includes("your-api-key")) {
+      // Mock response for development if no key or placeholder
       return NextResponse.json({
         itemIds: items.slice(0, 3).map((i: any) => i.id),
         reason: "※これはGemini APIキーが未設定のため表示されているモックデータです。\n\n今日の気温（" + temperature + "℃）と「" + scene + "」というシーンに合わせて、こちらのアイテムを選びました。"
       })
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY })
+    const ai = new GoogleGenAI({ apiKey })
 
     const prompt = `
 あなたはプロのパーソナルスタイリスト兼ライフスタイルアドバイザーです。
@@ -60,8 +62,9 @@ ${items.map((item: any) => `- ID: ${item.id} | カテゴリ: ${item.category} | 
     const cleanedText = jsonMatch ? jsonMatch[0] : text
     return NextResponse.json(JSON.parse(cleanedText))
 
-  } catch (error) {
-    console.error("[STYLIST_POST]", error)
-    return NextResponse.json({ error: "Failed to generate styling" }, { status: 500 })
+  } catch (error: any) {
+    console.error("[STYLIST_POST] Error details:", error.message || error)
+    if (error.stack) console.error(error.stack)
+    return NextResponse.json({ error: "Failed to generate styling", details: error.message }, { status: 500 })
   }
 }

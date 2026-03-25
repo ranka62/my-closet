@@ -16,7 +16,8 @@ export async function POST(req: Request) {
       return new NextResponse("Missing image URL", { status: 400 })
     }
 
-    if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
+    if (!apiKey || apiKey === "YOUR_API_KEY" || apiKey.includes("your-api-key")) {
       return NextResponse.json({
         category: "トップス",
         brand: "UNIQLO",
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
       })
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY })
+    const ai = new GoogleGenAI({ apiKey })
     
     // Base64プレフィックスを削除
     const base64Data = imageUrl.split(',')[1]
@@ -67,8 +68,8 @@ export async function POST(req: Request) {
     const cleanedText = jsonMatch ? jsonMatch[0] : text
     return NextResponse.json(JSON.parse(cleanedText))
 
-  } catch (error) {
-    console.error("[ANALYZE_IMAGE_POST]", error)
-    return new NextResponse("Internal error", { status: 500 })
+  } catch (error: any) {
+    console.error("[ANALYZE_IMAGE_POST] Error details:", error.message || error)
+    return NextResponse.json({ error: "Internal error", details: error.message }, { status: 500 })
   }
 }
