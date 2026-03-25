@@ -12,7 +12,7 @@ export async function POST(req: Request) {
 
     const { temperature, scene, request, items } = await req.json()
 
-    if (!process.env.GEMINI_API_KEY) {
+    if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
       // Mock response for development if no key
       return NextResponse.json({
         itemIds: items.slice(0, 3).map((i: any) => i.id),
@@ -20,7 +20,7 @@ export async function POST(req: Request) {
       })
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY })
 
     const prompt = `
 あなたはプロのパーソナルスタイリスト兼ライフスタイルアドバイザーです。
@@ -46,13 +46,8 @@ ${items.map((item: any) => `- ID: ${item.id} | カテゴリ: ${item.category} | 
 `
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: [
-        { text: prompt }
-      ],
-      config: {
-        responseMimeType: "application/json",
-      }
+      model: "gemini-1.5-flash",
+      contents: prompt
     })
 
     const text = response.text
@@ -60,10 +55,10 @@ ${items.map((item: any) => `- ID: ${item.id} | カテゴリ: ${item.category} | 
       throw new Error("No response from Gemini")
     }
 
-    // JSONをクリーンアップしてパース
-    const cleanedText = text.replace(/```json/g, "").replace(/```/g, "").trim()
-    const result = JSON.parse(cleanedText)
-    return NextResponse.json(result)
+    // JSONを抽出
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    const cleanedText = jsonMatch ? jsonMatch[0] : text
+    return NextResponse.json(JSON.parse(cleanedText))
 
   } catch (error) {
     console.error("[STYLIST_POST]", error)

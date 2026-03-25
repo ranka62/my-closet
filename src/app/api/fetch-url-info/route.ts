@@ -30,8 +30,8 @@ export async function POST(req: Request) {
     const description = $('meta[name="description"]').attr("content") || $('meta[property="og:description"]').attr("content")
     
     // Geminiを使って詳細を解析
-    if (process.env.GEMINI_API_KEY) {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+    if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY })
       const prompt = `
 以下のウェブサイトの情報を解析して、アイテムの情報をJSON形式で抽出してください。
 タイトル: ${title}
@@ -55,21 +55,27 @@ JSONフォーマットのみを出力してください:
 }
 `
       const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: [
-          { text: prompt }
-        ],
-        config: { responseMimeType: "application/json" }
+        model: "gemini-1.5-flash",
+        contents: prompt
       })
-      
+
       const text = response.text
       if (!text) {
         throw new Error("No response from Gemini")
       }
 
-      // JSONをクリーンアップしてパース
-      const cleanedText = text.replace(/```json/g, "").replace(/```/g, "").trim()
-      return NextResponse.json(JSON.parse(cleanedText))
+      // JSONを抽出
+      const jsonMatch = text.match(/\{[\s\S]*\}/)
+      const cleanedText = jsonMatch ? jsonMatch[0] : text
+      const data = JSON.parse(cleanedText)
+      
+      return NextResponse.json({
+        name: data.name || title,
+        brand: data.brand || "",
+        price: data.price || null,
+        category: data.category || "その他",
+        color: data.color || ""
+      })
     }
 
     // APIキーがない場合は最低限の情報を返す

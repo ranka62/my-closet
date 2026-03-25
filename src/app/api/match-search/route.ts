@@ -16,17 +16,14 @@ export async function POST(req: Request) {
       return new NextResponse("Missing image URL", { status: 400 })
     }
 
-    if (!process.env.GEMINI_API_KEY) {
-      const matchedItems = items.slice(0, 3)
+    if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
       return NextResponse.json({
-        matchedItemIds: matchedItems.map((i: any) => i.id),
-        reason: matchedItems.length > 0 
-          ? "※APIキー未設定のデモ表示です。\nあなたのクローゼットにある「" + matchedItems.map((i: any) => i.brand || i.name).join("」や「") + "」などのアイテムが、アップロードされた服にとてもよく似合います。全体のシルエットと色合いを合わせるのがポイントです。"
-          : "クローゼットにアイテムがないため、マッチングできませんでした。"
+        matchedItemIds: items.slice(0, 3).map((i: any) => i.id),
+        reason: "※これはGemini APIキーが未設定のため表示されているモックデータです。\n\nアップロードされた画像の色味やカテゴリから、こちらの3点をピックアップしました。統一感のあるコーディネートが作れそうです。"
       })
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY })
     const base64Data = imageUrl.split(',')[1]
 
     const prompt = `
@@ -45,19 +42,16 @@ ${items.map((item: any) => `- ID: ${item.id} | カテゴリ: ${item.category} | 
 `
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-1.5-flash",
       contents: [
-        { text: prompt },
+        prompt,
         {
           inlineData: {
             data: base64Data,
             mimeType: "image/jpeg"
           }
         }
-      ],
-      config: {
-        responseMimeType: "application/json",
-      }
+      ]
     })
 
     const text = response.text
@@ -65,8 +59,9 @@ ${items.map((item: any) => `- ID: ${item.id} | カテゴリ: ${item.category} | 
       throw new Error("No response from Gemini")
     }
 
-    // JSONをクリーンアップしてパース
-    const cleanedText = text.replace(/```json/g, "").replace(/```/g, "").trim()
+    // JSONを抽出
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    const cleanedText = jsonMatch ? jsonMatch[0] : text
     return NextResponse.json(JSON.parse(cleanedText))
 
   } catch (error) {

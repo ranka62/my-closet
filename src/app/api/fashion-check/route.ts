@@ -16,16 +16,16 @@ export async function POST(req: Request) {
       return new NextResponse("Missing image URL", { status: 400 })
     }
 
-    if (!process.env.GEMINI_API_KEY) {
+    if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
       return NextResponse.json({
         score: 85,
-        feedback: "※APIキー未設定のモックデータです。\n全体的にまとまりがあって素敵ですが、足元に少し明るい色を入れるとさらに良くなりそうです。",
-        goodPoints: ["色のバランス", "季節感"],
-        improvements: ["靴の色"]
+        feedback: "※これはGemini APIキーが未設定のため表示されているモックデータです。\n\n全体的に非常にバランスが良く、清潔感のあるコーディネートです。トップスの素材感がボトムスとよく合っており、季節感も適切に表現されています。小物を一点追加すると、さらに洗練された印象になります。",
+        goodPoints: ["色使いのバランスが良い", "シルエットが美しい", "清潔感がある"],
+        improvements: ["腕時計などのアクセサリーを追加", "靴の色をもう少し濃くする"]
       })
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+    const ai = new GoogleGenAI({ apiKey: (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) as string })
     const base64Data = imageUrl.split(',')[1]
 
     const prompt = `
@@ -42,19 +42,16 @@ export async function POST(req: Request) {
 `
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-1.5-flash",
       contents: [
-        { text: prompt },
+        prompt,
         {
           inlineData: {
             data: base64Data,
             mimeType: "image/jpeg"
           }
         }
-      ],
-      config: {
-        responseMimeType: "application/json",
-      }
+      ]
     })
 
     const text = response.text
@@ -62,8 +59,9 @@ export async function POST(req: Request) {
       throw new Error("No response from Gemini")
     }
 
-    // JSONをクリーンアップしてパース
-    const cleanedText = text.replace(/```json/g, "").replace(/```/g, "").trim()
+    // JSONを抽出
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    const cleanedText = jsonMatch ? jsonMatch[0] : text
     return NextResponse.json(JSON.parse(cleanedText))
 
   } catch (error) {

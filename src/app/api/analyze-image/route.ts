@@ -16,19 +16,18 @@ export async function POST(req: Request) {
       return new NextResponse("Missing image URL", { status: 400 })
     }
 
-    if (!process.env.GEMINI_API_KEY) {
-      // Mock response that feels a bit more dynamic
-      const categories = ["トップス", "ボトムス", "アウター", "バッグ", "シューズ", "ガジェット"];
-      const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+    if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
       return NextResponse.json({
-        category: randomCategory,
-        season: "All",
-        brand: "Mock Brand",
-        name: `${randomCategory} (APIキー未設定のためランダム)`,
+        category: "トップス",
+        brand: "UNIQLO",
+        name: "Mock Item",
+        color: "ホワイト",
+        season: "オール",
+        price: 2990
       })
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY })
     
     // Base64プレフィックスを削除
     const base64Data = imageUrl.split(',')[1]
@@ -46,19 +45,16 @@ export async function POST(req: Request) {
 `
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-1.5-flash",
       contents: [
-        { text: prompt },
+        prompt,
         {
           inlineData: {
             data: base64Data,
             mimeType: "image/jpeg"
           }
         }
-      ],
-      config: {
-        responseMimeType: "application/json",
-      }
+      ]
     })
 
     const text = response.text
@@ -66,10 +62,10 @@ export async function POST(req: Request) {
       throw new Error("No response from Gemini")
     }
 
-    // JSONをクリーンアップしてパース
-    const cleanedText = text.replace(/```json/g, "").replace(/```/g, "").trim()
-    const result = JSON.parse(cleanedText)
-    return NextResponse.json(result)
+    // JSONを抽出
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    const cleanedText = jsonMatch ? jsonMatch[0] : text
+    return NextResponse.json(JSON.parse(cleanedText))
 
   } catch (error) {
     console.error("[ANALYZE_IMAGE_POST]", error)

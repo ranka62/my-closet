@@ -12,18 +12,18 @@ export async function POST(req: Request) {
 
     const { items } = await req.json()
 
-    if (!process.env.GEMINI_API_KEY) {
+    if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
       return NextResponse.json({
         advices: [
           {
             itemIds: items.slice(0, 2).map((i: any) => i.id),
-            reason: "※APIキー未設定のモックデータです。\nこれらのアイテムは用途が被っているため、どちらか一方を手放すことを検討しても良いかもしれません。"
+            reason: "※これはGemini APIキーが未設定のため表示されているモックデータです。\n\nこれらのアイテムは最近あまり着用されていないようです。もし今後も着る機会がないようであれば、整理を検討してみても良いかもしれません。"
           }
         ]
       })
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY })
 
     const prompt = `
 あなたはプロの整理収納アドバイザー兼ミニマリストです。
@@ -49,13 +49,8 @@ ${items.map((item: any) => `- ID: ${item.id} | カテゴリ: ${item.category} | 
 `
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: [
-        { text: prompt }
-      ],
-      config: {
-        responseMimeType: "application/json",
-      }
+      model: "gemini-1.5-flash",
+      contents: prompt
     })
 
     const text = response.text
@@ -63,8 +58,9 @@ ${items.map((item: any) => `- ID: ${item.id} | カテゴリ: ${item.category} | 
       throw new Error("No response from Gemini")
     }
 
-    // JSONをクリーンアップしてパース
-    const cleanedText = text.replace(/```json/g, "").replace(/```/g, "").trim()
+    // JSONを抽出
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    const cleanedText = jsonMatch ? jsonMatch[0] : text
     return NextResponse.json(JSON.parse(cleanedText))
 
   } catch (error) {
