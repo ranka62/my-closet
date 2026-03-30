@@ -140,6 +140,19 @@ export default function BulkAddModal({
     setRecognizedItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item))
   }
 
+  const handleItemImageUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      const base64 = await new Promise<string>((resolve) => {
+        reader.onloadend = () => resolve(reader.result as string)
+        reader.readAsDataURL(file)
+      })
+      const compressed = await compressImage(base64)
+      updateItemField(index, 'imageUrl', compressed)
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
@@ -253,33 +266,47 @@ export default function BulkAddModal({
                 </button>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-4 pb-20">
                 {recognizedItems.map((item, idx) => (
-                  <div key={idx} className="group bg-white border border-stone-200 rounded-2xl p-5 hover:border-stone-300 transition-all shadow-sm">
-                    <div className="flex gap-6">
-                      <div className="w-24 h-24 shrink-0 bg-stone-50 rounded-xl border border-stone-100 flex items-center justify-center relative overflow-hidden">
-                        <Edit2 className="w-4 h-4 text-stone-300 absolute inset-0 m-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <span className="text-[10px] text-stone-400 text-center px-2">No Image Detected</span>
+                  <div key={idx} className="group bg-white border border-stone-200 rounded-2xl p-4 sm:p-6 hover:border-stone-300 transition-all shadow-sm">
+                    <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+                      <div className="w-full sm:w-32 h-40 sm:h-32 shrink-0 bg-stone-50 rounded-xl border border-stone-100 flex items-center justify-center relative overflow-hidden group/img">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain p-2" />
+                        ) : (
+                          <div className="flex flex-col items-center gap-2 text-stone-400">
+                            <Upload className="w-5 h-5" />
+                            <span className="text-[10px]">Add Photo</span>
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleItemImageUpload(idx, e)}
+                          className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/5 transition-colors pointer-events-none" />
                       </div>
-                      <div className="flex-1 space-y-4">
+
+                      <div className="flex-1 space-y-4 min-w-0">
                         <div className="flex justify-between items-start gap-4">
-                          <div className="flex-1 space-y-1">
+                          <div className="flex-1 space-y-2 min-w-0">
                             <input
                               type="text"
                               value={item.name}
                               onChange={(e) => updateItemField(idx, 'name', e.target.value)}
-                              className="w-full text-lg font-medium text-stone-900 border-none p-0 focus:ring-0 placeholder:text-stone-300"
+                              className="w-full text-lg font-medium text-stone-900 border-b border-transparent focus:border-stone-200 focus:ring-0 p-0 placeholder:text-stone-300 bg-transparent truncate"
                               placeholder="Item Name"
                             />
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                               <input
                                 type="text"
                                 value={item.brand}
                                 onChange={(e) => updateItemField(idx, 'brand', e.target.value)}
-                                className="text-sm text-stone-500 border-none p-0 focus:ring-0 placeholder:text-stone-300 w-32"
+                                className="text-sm text-stone-500 border-b border-transparent focus:border-stone-200 focus:ring-0 p-0 placeholder:text-stone-300 w-24 sm:w-32 bg-transparent"
                                 placeholder="Brand"
                               />
-                              <span className="text-stone-300">|</span>
+                              <span className="text-stone-300 hidden sm:inline">|</span>
                               <select
                                 value={item.category}
                                 onChange={(e) => updateItemField(idx, 'category', e.target.value)}
@@ -293,50 +320,50 @@ export default function BulkAddModal({
                           </div>
                           <button
                             onClick={() => removeItem(idx)}
-                            className="p-2 text-stone-300 hover:text-red-500 transition-colors"
+                            className="p-2 text-stone-300 hover:text-red-500 transition-colors shrink-0"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2 border-t border-stone-50">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-stone-50">
                           <div className="space-y-1">
-                            <label className="text-[10px] text-stone-400 uppercase tracking-wider">Price</label>
-                            <div className="flex items-center gap-1">
+                            <label className="text-[10px] text-stone-400 uppercase tracking-wider block">Price</label>
+                            <div className="flex items-center gap-1 border-b border-transparent focus-within:border-stone-200 transition-colors">
                               <span className="text-stone-400 text-sm">¥</span>
                               <input
                                 type="number"
                                 value={item.price || ""}
                                 onChange={(e) => updateItemField(idx, 'price', e.target.value)}
-                                className="w-full text-sm font-medium text-stone-700 border-none p-0 focus:ring-0 placeholder:text-stone-300"
+                                className="w-full text-sm font-medium text-stone-700 border-none p-0 focus:ring-0 placeholder:text-stone-300 bg-transparent"
                               />
                             </div>
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[10px] text-stone-400 uppercase tracking-wider">Date</label>
+                            <label className="text-[10px] text-stone-400 uppercase tracking-wider block">Date</label>
                             <input
                               type="date"
                               value={item.purchaseDate || ""}
                               onChange={(e) => updateItemField(idx, 'purchaseDate', e.target.value)}
-                              className="w-full text-sm font-medium text-stone-700 border-none p-0 focus:ring-0 bg-transparent"
+                              className="w-full text-sm font-medium text-stone-700 border-b border-transparent focus:border-stone-200 focus:ring-0 p-0 bg-transparent transition-colors"
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[10px] text-stone-400 uppercase tracking-wider">Color</label>
+                            <label className="text-[10px] text-stone-400 uppercase tracking-wider block">Color</label>
                             <input
                               type="text"
                               value={item.color}
                               onChange={(e) => updateItemField(idx, 'color', e.target.value)}
-                              className="w-full text-sm font-medium text-stone-700 border-none p-0 focus:ring-0 placeholder:text-stone-300"
+                              className="w-full text-sm font-medium text-stone-700 border-b border-transparent focus:border-stone-200 focus:ring-0 p-0 placeholder:text-stone-300 bg-transparent transition-colors"
                               placeholder="Color"
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[10px] text-stone-400 uppercase tracking-wider">Season</label>
+                            <label className="text-[10px] text-stone-400 uppercase tracking-wider block">Season</label>
                             <select
                               value={item.season}
                               onChange={(e) => updateItemField(idx, 'season', e.target.value)}
-                              className="w-full text-sm font-medium text-stone-700 border-none p-0 focus:ring-0 bg-transparent cursor-pointer"
+                              className="w-full text-sm font-medium text-stone-700 border-none p-0 focus:ring-0 bg-transparent cursor-pointer transition-colors"
                             >
                               {["夏", "春秋", "春夏秋", "春秋冬", "冬", "オール"].map(s => (
                                 <option key={s} value={s}>{s}</option>
