@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect, useMemo } from "react"
 import { Item } from "@prisma/client"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
-import { Plus, Search, Filter, Shirt, X, Calculator, ImagePlus, Sparkles, Trash2, Edit3, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react"
+import { Plus, Search, Filter, Shirt, X, Calculator, ImagePlus, Sparkles, Trash2, Edit3, ChevronLeft, ChevronRight, ArrowUpDown, Layers } from "lucide-react"
 import AddItemModal from "./AddItemModal"
+import BulkAddModal from "./BulkAddModal"
 
 const CATEGORIES = ["すべて", "トップス", "ボトムス", "アウター", "シューズ", "アクセサリー", "ワンピース", "バッグ", "雑貨・ライフスタイル", "ガジェット", "その他"]
 
@@ -29,6 +30,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
   const [category, setCategory] = useState("すべて")
   const [sortBy, setSortBy] = useState("created_desc")
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<any | null>(null)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [showNameTooltip, setShowNameTooltip] = useState(false)
@@ -358,8 +360,6 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
     return result
   }, [items, category, search, sortBy])
 
-  const totalValue = useMemo(() => items.reduce((sum, item) => sum + (item.price || 0), 0), [items])
-
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center justify-between pb-4 border-b border-stone-200">
@@ -392,6 +392,14 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
             ref={fileInputRef}
             onChange={handleMatchImageUpload}
           />
+          <button
+            onClick={() => setIsBulkModalOpen(true)}
+            className="group flex items-center justify-center gap-2 bg-white border border-stone-200 text-stone-700 p-2 sm:px-5 sm:py-2.5 rounded-full hover:bg-stone-50 hover:border-stone-300 transition-all active:scale-95 shadow-sm"
+            title="一括追加"
+          >
+            <Layers className="h-4 w-4 text-stone-400" />
+            <span className="text-xs sm:text-sm font-medium hidden sm:inline">一括追加</span>
+          </button>
           <button
             onClick={() => setIsModalOpen(true)}
             className="group flex items-center justify-center gap-2 bg-stone-900 text-white px-3 py-2 sm:px-5 sm:py-2.5 rounded-full hover:bg-stone-800 transition-all active:scale-95"
@@ -538,7 +546,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
           </div>
         </div>
         <div className="text-xs font-medium text-stone-400 uppercase tracking-widest px-4">
-          {items.length} items / ¥{totalValue.toLocaleString()}
+          {items.length} items
         </div>
       </div>
 
@@ -586,6 +594,13 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
         <AddItemModal
           onClose={() => setIsModalOpen(false)}
           onAdd={(newItem) => setItems([newItem, ...items])}
+        />
+      )}
+
+      {isBulkModalOpen && (
+        <BulkAddModal
+          onClose={() => setIsBulkModalOpen(false)}
+          onAdd={(newItems) => setItems([...newItems, ...items])}
         />
       )}
 

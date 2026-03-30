@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Shirt, Calendar, Sparkles, Briefcase } from "lucide-react"
+import { Shirt, Calendar, Sparkles, Briefcase, User } from "lucide-react"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { LogoutButton } from "./LogoutButton"
@@ -33,8 +33,10 @@ export default async function Header() {
             <span className="hidden sm:inline">Packing</span>
             <Briefcase className="h-4 w-4 sm:hidden" />
           </Link>
-          <div className="h-4 w-px bg-stone-200 mx-2 hidden sm:block" />
-          <LogoutButton />
+          <Link href="/mypage" className="flex items-center gap-2 text-sm font-medium text-stone-600 hover:text-stone-900 transition-colors">
+            <span className="hidden sm:inline">My Page</span>
+            <User className="h-4 w-4 sm:hidden" />
+          </Link>
         </nav>
       </div>
     </header>
