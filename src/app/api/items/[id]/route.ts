@@ -16,7 +16,7 @@ export async function PATCH(
 
     const { id } = await params
     const body = await req.json()
-    const { category, brand, name, price, season, source, status, color, purchaseDate, imageUrl, newImages } = body
+    const { category, brand, name, price, season, source, status, color, purchaseDate, imageUrl, secondaryImages } = body
 
     // 既存の画像情報を取得
     const existingItem = await prisma.item.findUnique({
@@ -28,14 +28,10 @@ export async function PATCH(
       return new NextResponse("Not found", { status: 404 })
     }
 
-    // 新しい画像が追加される場合、かつ既存の画像リストが空の場合
-    // 元々のimageUrlも画像リストに追加する（整合性のため）
-    let imagesToCreate = newImages || []
-    if (newImages && newImages.length > 0 && existingItem.images.length === 0) {
-      if (!newImages.includes(existingItem.imageUrl)) {
-        imagesToCreate = [existingItem.imageUrl, ...newImages]
-      }
-    }
+    // 既存のサブ画像を一旦削除（imageUrlはメインフィールドなので残るが、ItemImageテーブル側を同期）
+    await prisma.itemImage.deleteMany({
+      where: { itemId: id }
+    })
 
     const item = await prisma.item.update({
       where: { id },
@@ -49,9 +45,9 @@ export async function PATCH(
         status,
         color,
         purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
-        imageUrl: imageUrl, // Update main image if provided
-        images: imagesToCreate.length > 0 ? {
-          create: imagesToCreate.map((url: string) => ({ url }))
+        imageUrl: imageUrl, // 新しいメイン画像
+        images: secondaryImages && secondaryImages.length > 0 ? {
+          create: secondaryImages.map((url: string) => ({ url }))
         } : undefined
       },
       include: {

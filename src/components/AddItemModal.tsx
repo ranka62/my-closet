@@ -223,7 +223,13 @@ export default function AddItemModal({
             <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory">
               {formData.images.map((img, idx) => (
                 <div key={idx} className="relative w-28 h-28 sm:w-32 sm:h-32 shrink-0 rounded-2xl border border-stone-200 overflow-hidden bg-stone-50 snap-start">
-                  <NextImage src={img} alt={`Preview ${idx + 1}`} fill className="object-contain mix-blend-multiply p-2" />
+                  <NextImage 
+                    src={img} 
+                    alt={`Preview ${idx + 1}`} 
+                    fill 
+                    className="object-contain mix-blend-multiply p-2" 
+                    unoptimized={img?.startsWith('data:')}
+                  />
                   <button 
                     type="button"
                     onClick={() => removeImage(idx)}

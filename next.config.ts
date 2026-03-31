@@ -11,7 +11,15 @@ const withPWA = withPWAInit({
 const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve("..")
-  } // Silence the Turbopack warning with next-pwa
+  }, // Silence the Turbopack warning with next-pwa
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+    ],
+  },
 };
 
 export default withPWA(nextConfig);

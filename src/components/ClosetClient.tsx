@@ -51,6 +51,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
   const [isMatching, setIsMatching] = useState(false) 
   const [updating, setUpdating] = useState(false)
   const [fetchingUrl, setFetchingUrl] = useState(false)
+  const [editImages, setEditImages] = useState<{url: string, isNew: boolean, id?: string}[]>([])
 
   // Image Match Search State
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -80,6 +81,18 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
           source: item.source || "",
           status: item.status || "available"
         })
+        
+        // 画像リストの初期化（メイン + サブ）
+        const initialImages = []
+        if (item.imageUrl) initialImages.push({ url: item.imageUrl, isNew: false })
+        if (item.images) {
+          item.images.forEach((img: any) => {
+            if (img.url !== item.imageUrl) {
+              initialImages.push({ url: img.url, isNew: false, id: img.id })
+            }
+          })
+        }
+        setEditImages(initialImages)
       }
     } else {
       const itemId = searchParams.get('item')
@@ -104,6 +117,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
     setSelectedItem(null)
     setIsEditMode(false)
     setNewImages([])
+    setEditImages([])
     setCurrentImageIndex(0)
     setShowNameTooltip(false)
     const params = new URLSearchParams(searchParams.toString())
@@ -114,6 +128,19 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
 
   const handleEditClick = (item: any) => {
     setNewImages([]) // Reset newly uploaded images
+    
+    // 画像リストの初期化（メイン + サブ）
+    const initialImages = []
+    if (item.imageUrl) initialImages.push({ url: item.imageUrl, isNew: false })
+    if (item.images) {
+      item.images.forEach((img: any) => {
+        if (img.url !== item.imageUrl) {
+          initialImages.push({ url: img.url, isNew: false, id: img.id })
+        }
+      })
+    }
+    setEditImages(initialImages)
+    
     const params = new URLSearchParams(searchParams.toString())
     params.set('edit', item.id)
     params.delete('item')
@@ -166,7 +193,12 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
           const compressed = await compressImage(base64)
           uploaded.push(compressed)
         }
+        
+        // 既存の表示画像リストを計算して、新しい画像のインデックスに飛ばす
+        const newIdx = editImages.length
         setNewImages(prev => [...prev, ...uploaded])
+        setEditImages(prev => [...prev, ...uploaded.map(url => ({ url, isNew: true }))])
+        setCurrentImageIndex(newIdx) // 新しく追加した最初の画像を表示
       } catch (error) {
         console.error("Image processing failed", error)
       } finally {
@@ -179,14 +211,24 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
     if (!selectedItem) return
     setUpdating(true)
     try {
+      if (editImages.length === 0) {
+        alert("少なくとも1つの画像が必要です")
+        setUpdating(false)
+        return
+      }
+
+      const finalImageUrl = editImages[0].url
+      const secondaryImages = editImages.slice(1).map(img => img.url)
+
       const res = await fetch(`/api/items/${selectedItem.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...editFormData,
+          imageUrl: finalImageUrl,
+          secondaryImages: secondaryImages,
           price: editFormData.price ? parseInt(editFormData.price) : null,
           purchaseDate: editFormData.purchaseDate ? new Date(editFormData.purchaseDate) : null,
-          newImages: newImages // Newly added images
         })
       })
       if (res.ok) {
@@ -195,6 +237,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
         setSelectedItem({ ...updatedItem, coordinates: selectedItem.coordinates })
         setIsEditMode(false)
         setNewImages([]) // Clear after update
+        setEditImages([])
       }
     } catch (error) {
       console.error(error)
@@ -610,6 +653,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                   sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
                   className="object-cover transition-transform duration-700 group-hover:scale-105"
                   priority={index < 10}
+                  unoptimized={item.imageUrl?.startsWith('data:')}
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300" />
                 {wearCount > 0 && (
@@ -695,6 +739,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                               fill
                               className="object-contain mix-blend-multiply" 
                               priority={idx === 0}
+                              unoptimized={url?.startsWith('data:')}
                             />
                           </div>
                         ))}
@@ -709,6 +754,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                           fill
                           className="object-contain mix-blend-multiply" 
                           priority
+                          unoptimized={selectedItem.imageUrl?.startsWith('data:')}
                         />
                       </div>
                     )
@@ -795,8 +841,36 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                         />
                       </div>
                       <div className="space-y-2 pt-2">
-                        <label className="text-[10px] uppercase tracking-wider text-stone-400 font-medium block">Add Images</label>
+                        <label className="text-[10px] uppercase tracking-wider text-stone-400 font-medium block">Images</label>
                         <div className="flex flex-wrap gap-2">
+                          {/* 編集中の全画像の表示と削除 */}
+                          {editImages.map((img, idx) => (
+                            <div key={`${img.isNew ? 'new' : 'existing'}-${idx}`} className="relative w-16 h-16 rounded-xl border border-stone-200 overflow-hidden bg-stone-50 group/img">
+                              <img src={img.url} alt="" className="w-full h-full object-cover" />
+                              <button 
+                                onClick={() => {
+                                  if (editImages.length <= 1) {
+                                    alert("少なくとも1枚の画像は必要です")
+                                    return
+                                  }
+                                  setEditImages(prev => prev.filter((_, i) => i !== idx))
+                                  if (currentImageIndex >= idx && currentImageIndex > 0) {
+                                    setCurrentImageIndex(prev => prev - 1)
+                                  }
+                                }}
+                                className="absolute top-0.5 right-0.5 p-0.5 bg-white/80 rounded-full text-stone-500 hover:text-red-500 opacity-0 group-hover/img:opacity-100 transition-opacity"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                              {idx === 0 && (
+                                <span className="absolute bottom-0 left-0 right-0 bg-stone-900/60 text-white text-[6px] text-center py-0.5">MAIN</span>
+                              )}
+                              {img.isNew && (
+                                <span className="absolute top-0 left-0 bg-blue-500/80 text-white text-[6px] px-1 rounded-br">NEW</span>
+                              )}
+                            </div>
+                          ))}
+
                           <label className="w-16 h-16 border-2 border-dashed border-stone-200 rounded-xl flex items-center justify-center cursor-pointer hover:border-stone-400 transition-colors">
                             <Plus className="h-4 w-4 text-stone-400" />
                             <input 
@@ -808,17 +882,6 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                               disabled={updating}
                             />
                           </label>
-                          {newImages.map((url, idx) => (
-                            <div key={idx} className="relative w-16 h-16 rounded-xl border border-stone-200 overflow-hidden bg-stone-50">
-                              <img src={url} alt="" className="w-full h-full object-cover" />
-                              <button 
-                                onClick={() => setNewImages(prev => prev.filter((_, i) => i !== idx))}
-                                className="absolute top-0.5 right-0.5 p-0.5 bg-white/80 rounded-full text-stone-500 hover:text-red-500"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </div>
-                          ))}
                         </div>
                       </div>
                     </div>
