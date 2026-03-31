@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import Image from "next/image"
+import NextImage from "next/image"
 import { X, Upload, Sparkles, Plus, Trash2, Edit2, Check, AlertCircle } from "lucide-react"
 import { Button } from "./ui/button"
 
@@ -213,7 +213,7 @@ export default function BulkAddModal({
                   <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1">
                     {screenshots.map((img, idx) => (
                       <div key={idx} className="relative w-32 h-32 shrink-0 rounded-2xl border border-stone-200 overflow-hidden bg-white shadow-sm">
-                        <Image src={img} alt={`Screenshot ${idx + 1}`} fill className="object-cover" />
+                        <NextImage src={img} alt={`Screenshot ${idx + 1}`} fill className="object-cover" />
                         <button
                           onClick={() => setScreenshots(prev => prev.filter((_, i) => i !== idx))}
                           className="absolute top-2 right-2 bg-white/90 rounded-full p-1.5 shadow-sm hover:bg-stone-100 transition-colors"
@@ -273,7 +273,7 @@ export default function BulkAddModal({
                     <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
                       <div className="w-full sm:w-32 h-40 sm:h-32 shrink-0 bg-stone-50 rounded-xl border border-stone-100 flex items-center justify-center relative overflow-hidden group/img">
                         {item.imageUrl ? (
-                          <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-2" />
+                          <NextImage src={item.imageUrl} alt={item.name} fill className="object-contain p-2" />
                         ) : (
                           <div className="flex flex-col items-center gap-2 text-stone-400">
                             <Upload className="w-5 h-5" />

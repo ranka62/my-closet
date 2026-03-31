@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
-import Image from "next/image"
+import NextImage from "next/image"
 import { Item } from "@prisma/client"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Plus, Search, Filter, Shirt, X, Calculator, ImagePlus, Sparkles, Trash2, Edit3, ChevronLeft, ChevronRight, ArrowUpDown, Layers } from "lucide-react"
@@ -456,7 +456,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
               <p className="text-xs font-medium text-stone-500 uppercase tracking-wider text-center">Target Item</p>
               <div className="aspect-square bg-white rounded-2xl overflow-hidden border border-stone-200 shadow-sm relative">
                 {matchingImage && (
-                  <Image 
+                  <NextImage 
                     src={matchingImage} 
                     alt="Target" 
                     fill
@@ -492,7 +492,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                         return (
                           <div key={item.id} className="group cursor-pointer" onClick={() => openItemDetails(item)}>
                             <div className="aspect-[3/4] bg-white rounded-xl overflow-hidden border border-stone-200 shadow-sm relative">
-                              <Image 
+                              <NextImage 
                                 src={item.imageUrl} 
                                 alt="" 
                                 fill
@@ -539,7 +539,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                       return (
                         <div key={item.id} className="w-24 shrink-0 group cursor-pointer" onClick={() => openItemDetails(item)}>
                           <div className="aspect-[3/4] bg-stone-50 rounded-xl overflow-hidden border border-stone-100 mb-2 relative">
-                            <Image 
+                            <NextImage 
                               src={item.imageUrl} 
                               alt="" 
                               fill
@@ -603,7 +603,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
           return (
             <div key={item.id} className="group cursor-pointer" onClick={() => openItemDetails(item)}>
               <div className="aspect-[3/4] relative bg-stone-100 rounded-2xl overflow-hidden mb-2">
-                <Image
+                <NextImage
                   src={item.imageUrl}
                   alt={item.name || "Item"}
                   fill
@@ -670,10 +670,16 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
               {/* Multiple Images Display with Arrows */}
               <div className="w-full h-full relative overflow-hidden">
                 {(() => {
-                  const displayImages = [
-                    ...(selectedItem.images || []).map((img: any) => img.url),
-                    ...newImages
-                  ]
+                  const existingImagesUrls = (selectedItem.images || []).map((img: any) => img.url)
+                  const displayImages = [...existingImagesUrls]
+                  
+                  // もともと画像がないか、imageUrlがimagesに含まれていない場合は先頭に追加
+                  if (selectedItem.imageUrl && !existingImagesUrls.includes(selectedItem.imageUrl)) {
+                    displayImages.unshift(selectedItem.imageUrl)
+                  }
+                  
+                  // 追加画像があれば末尾に追加
+                  displayImages.push(...newImages)
                   
                   if (displayImages.length > 0) {
                     return (
@@ -683,7 +689,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                       >
                         {displayImages.map((url: string, idx: number) => (
                           <div key={idx} className="relative w-full h-full flex-shrink-0">
-                            <Image 
+                            <NextImage 
                               src={url} 
                               alt="" 
                               fill
@@ -697,7 +703,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                   } else {
                     return (
                       <div className="relative w-full h-full">
-                        <Image 
+                        <NextImage 
                           src={selectedItem.imageUrl} 
                           alt={selectedItem.name || ""} 
                           fill
@@ -711,7 +717,14 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
 
                 {/* Navigation Arrows */}
                 {(() => {
-                  const totalImages = (selectedItem.images?.length || 0) + newImages.length
+                  const existingImagesUrls = (selectedItem.images || []).map((img: any) => img.url)
+                  const displayImages = [...existingImagesUrls]
+                  if (selectedItem.imageUrl && !existingImagesUrls.includes(selectedItem.imageUrl)) {
+                    displayImages.unshift(selectedItem.imageUrl)
+                  }
+                  displayImages.push(...newImages)
+                  
+                  const totalImages = displayImages.length
                   if (totalImages > 1) {
                     return (
                       <>
