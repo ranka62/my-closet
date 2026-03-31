@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
+import Image from "next/image"
 import { Item } from "@prisma/client"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Plus, Search, Filter, Shirt, X, Calculator, ImagePlus, Sparkles, Trash2, Edit3, ChevronLeft, ChevronRight, ArrowUpDown, Layers } from "lucide-react"
@@ -35,6 +36,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [showNameTooltip, setShowNameTooltip] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
+  const [newImages, setNewImages] = useState<string[]>([])
   const [editFormData, setEditFormData] = useState({
     category: "",
     brand: "",
@@ -101,6 +103,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
   const closeItemDetails = () => {
     setSelectedItem(null)
     setIsEditMode(false)
+    setNewImages([])
     setCurrentImageIndex(0)
     setShowNameTooltip(false)
     const params = new URLSearchParams(searchParams.toString())
@@ -110,6 +113,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
   }
 
   const handleEditClick = (item: any) => {
+    setNewImages([]) // Reset newly uploaded images
     const params = new URLSearchParams(searchParams.toString())
     params.set('edit', item.id)
     params.delete('item')
@@ -146,6 +150,31 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
     }
   }
 
+  const handleEditImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files && files.length > 0) {
+      setUpdating(true)
+      const uploaded: string[] = []
+      try {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i]
+          const reader = new FileReader()
+          const base64 = await new Promise<string>((resolve) => {
+            reader.onloadend = () => resolve(reader.result as string)
+            reader.readAsDataURL(file)
+          })
+          const compressed = await compressImage(base64)
+          uploaded.push(compressed)
+        }
+        setNewImages(prev => [...prev, ...uploaded])
+      } catch (error) {
+        console.error("Image processing failed", error)
+      } finally {
+        setUpdating(false)
+      }
+    }
+  }
+
   const handleUpdateItem = async () => {
     if (!selectedItem) return
     setUpdating(true)
@@ -156,7 +185,8 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
         body: JSON.stringify({
           ...editFormData,
           price: editFormData.price ? parseInt(editFormData.price) : null,
-          purchaseDate: editFormData.purchaseDate ? new Date(editFormData.purchaseDate) : null
+          purchaseDate: editFormData.purchaseDate ? new Date(editFormData.purchaseDate) : null,
+          newImages: newImages // Newly added images
         })
       })
       if (res.ok) {
@@ -164,6 +194,7 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
         setItems(items.map(i => i.id === updatedItem.id ? { ...updatedItem, coordinates: i.coordinates } : i))
         setSelectedItem({ ...updatedItem, coordinates: selectedItem.coordinates })
         setIsEditMode(false)
+        setNewImages([]) // Clear after update
       }
     } catch (error) {
       console.error(error)
@@ -424,8 +455,14 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
             <div className="w-full md:w-48 shrink-0 space-y-3">
               <p className="text-xs font-medium text-stone-500 uppercase tracking-wider text-center">Target Item</p>
               <div className="aspect-square bg-white rounded-2xl overflow-hidden border border-stone-200 shadow-sm relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                {matchingImage && <img src={matchingImage} alt="Target" className="w-full h-full object-contain p-2" />}
+                {matchingImage && (
+                  <Image 
+                    src={matchingImage} 
+                    alt="Target" 
+                    fill
+                    className="object-contain p-2" 
+                  />
+                )}
                 {isMatching && (
                   <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center">
                     <Sparkles className="h-6 w-6 text-stone-900 animate-spin" />
@@ -454,9 +491,14 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                         if (!item) return null
                         return (
                           <div key={item.id} className="group cursor-pointer" onClick={() => openItemDetails(item)}>
-                            <div className="aspect-[3/4] bg-white rounded-xl overflow-hidden border border-stone-200 shadow-sm">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={item.imageUrl} alt="" className="w-full h-full object-cover mix-blend-multiply" />
+                            <div className="aspect-[3/4] bg-white rounded-xl overflow-hidden border border-stone-200 shadow-sm relative">
+                              <Image 
+                                src={item.imageUrl} 
+                                alt="" 
+                                fill
+                                sizes="100px"
+                                className="object-cover mix-blend-multiply" 
+                              />
                             </div>
                           </div>
                         )
@@ -496,9 +538,14 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                       if (!item) return null
                       return (
                         <div key={item.id} className="w-24 shrink-0 group cursor-pointer" onClick={() => openItemDetails(item)}>
-                          <div className="aspect-[3/4] bg-stone-50 rounded-xl overflow-hidden border border-stone-100 mb-2">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={item.imageUrl} alt="" className="w-full h-full object-cover mix-blend-multiply" />
+                          <div className="aspect-[3/4] bg-stone-50 rounded-xl overflow-hidden border border-stone-100 mb-2 relative">
+                            <Image 
+                              src={item.imageUrl} 
+                              alt="" 
+                              fill
+                              sizes="96px"
+                              className="object-cover mix-blend-multiply" 
+                            />
                           </div>
                           <p className="text-[10px] text-stone-500 truncate text-center px-1">{item.brand || item.name || "Unknown"}</p>
                         </div>
@@ -551,16 +598,18 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-4 gap-y-6">
-        {filteredItems.map(item => {
+        {filteredItems.map((item, index) => {
           const wearCount = item.coordinates?.length || 0;
           return (
             <div key={item.id} className="group cursor-pointer" onClick={() => openItemDetails(item)}>
               <div className="aspect-[3/4] relative bg-stone-100 rounded-2xl overflow-hidden mb-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={item.imageUrl}
                   alt={item.name || "Item"}
-                  className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-105"
+                  fill
+                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+                  className="object-cover transition-transform duration-700 group-hover:scale-105"
+                  priority={index < 10}
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300" />
                 {wearCount > 0 && (
@@ -620,52 +669,80 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
             <div className="w-full md:w-3/5 aspect-square md:aspect-auto bg-stone-100 relative group/carousel">
               {/* Multiple Images Display with Arrows */}
               <div className="w-full h-full relative overflow-hidden">
-                {selectedItem.images && selectedItem.images.length > 0 ? (
-                  <div 
-                    className="w-full h-full flex transition-transform duration-500 ease-out"
-                    style={{ transform: `translateX(-${currentImageIndex * 100}%)` }}
-                  >
-                    {selectedItem.images.map((img: any, idx: number) => (
-                      <img 
-                        key={idx} 
-                        src={img.url} 
-                        alt="" 
-                        className="w-full h-full object-contain mix-blend-multiply flex-shrink-0" 
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <img src={selectedItem.imageUrl} alt={selectedItem.name || ""} className="w-full h-full object-contain mix-blend-multiply" />
-                )}
+                {(() => {
+                  const displayImages = [
+                    ...(selectedItem.images || []).map((img: any) => img.url),
+                    ...newImages
+                  ]
+                  
+                  if (displayImages.length > 0) {
+                    return (
+                      <div 
+                        className="w-full h-full flex transition-transform duration-500 ease-out"
+                        style={{ transform: `translateX(-${currentImageIndex * 100}%)` }}
+                      >
+                        {displayImages.map((url: string, idx: number) => (
+                          <div key={idx} className="relative w-full h-full flex-shrink-0">
+                            <Image 
+                              src={url} 
+                              alt="" 
+                              fill
+                              className="object-contain mix-blend-multiply" 
+                              priority={idx === 0}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  } else {
+                    return (
+                      <div className="relative w-full h-full">
+                        <Image 
+                          src={selectedItem.imageUrl} 
+                          alt={selectedItem.name || ""} 
+                          fill
+                          className="object-contain mix-blend-multiply" 
+                          priority
+                        />
+                      </div>
+                    )
+                  }
+                })()}
 
                 {/* Navigation Arrows */}
-                {selectedItem.images?.length > 1 && (
-                  <>
-                    <button 
-                      onClick={() => setCurrentImageIndex(prev => (prev > 0 ? prev - 1 : selectedItem.images.length - 1))}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-white/80 backdrop-blur rounded-full text-stone-900 shadow-md opacity-0 group-hover/carousel:opacity-100 transition-opacity"
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <button 
-                      onClick={() => setCurrentImageIndex(prev => (prev < selectedItem.images.length - 1 ? prev + 1 : 0))}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/80 backdrop-blur rounded-full text-stone-900 shadow-md opacity-0 group-hover/carousel:opacity-100 transition-opacity"
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                    </button>
-                    
-                    {/* Pagination Dots */}
-                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-                      {selectedItem.images.map((_: any, idx: number) => (
-                        <button
-                          key={idx}
-                          onClick={() => setCurrentImageIndex(idx)}
-                          className={`w-1.5 h-1.5 rounded-full transition-all ${currentImageIndex === idx ? 'bg-stone-900 w-4' : 'bg-stone-300'}`}
-                        />
-                      ))}
-                    </div>
-                  </>
-                )}
+                {(() => {
+                  const totalImages = (selectedItem.images?.length || 0) + newImages.length
+                  if (totalImages > 1) {
+                    return (
+                      <>
+                        <button 
+                          onClick={() => setCurrentImageIndex(prev => (prev > 0 ? prev - 1 : totalImages - 1))}
+                          className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-white/80 backdrop-blur rounded-full text-stone-900 shadow-md opacity-0 group-hover/carousel:opacity-100 transition-opacity"
+                        >
+                          <ChevronLeft className="h-5 w-5" />
+                        </button>
+                        <button 
+                          onClick={() => setCurrentImageIndex(prev => (prev < totalImages - 1 ? prev + 1 : 0))}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/80 backdrop-blur rounded-full text-stone-900 shadow-md opacity-0 group-hover/carousel:opacity-100 transition-opacity"
+                        >
+                          <ChevronRight className="h-5 w-5" />
+                        </button>
+                        
+                        {/* Pagination Dots */}
+                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+                          {Array.from({ length: totalImages }).map((_, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => setCurrentImageIndex(idx)}
+                              className={`w-1.5 h-1.5 rounded-full transition-all ${currentImageIndex === idx ? 'bg-stone-900 w-4' : 'bg-stone-300'}`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )
+                  }
+                  return null
+                })()}
               </div>
             </div>
 
@@ -703,6 +780,33 @@ export default function ClosetClient({ initialItems }: { initialItems: any[] }) 
                           value={editFormData.name}
                           onChange={e => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
                         />
+                      </div>
+                      <div className="space-y-2 pt-2">
+                        <label className="text-[10px] uppercase tracking-wider text-stone-400 font-medium block">Add Images</label>
+                        <div className="flex flex-wrap gap-2">
+                          <label className="w-16 h-16 border-2 border-dashed border-stone-200 rounded-xl flex items-center justify-center cursor-pointer hover:border-stone-400 transition-colors">
+                            <Plus className="h-4 w-4 text-stone-400" />
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              multiple 
+                              className="hidden" 
+                              onChange={handleEditImageUpload}
+                              disabled={updating}
+                            />
+                          </label>
+                          {newImages.map((url, idx) => (
+                            <div key={idx} className="relative w-16 h-16 rounded-xl border border-stone-200 overflow-hidden bg-stone-50">
+                              <img src={url} alt="" className="w-full h-full object-cover" />
+                              <button 
+                                onClick={() => setNewImages(prev => prev.filter((_, i) => i !== idx))}
+                                className="absolute top-0.5 right-0.5 p-0.5 bg-white/80 rounded-full text-stone-500 hover:text-red-500"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   ) : (

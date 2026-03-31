@@ -16,7 +16,7 @@ export async function PATCH(
 
     const { id } = await params
     const body = await req.json()
-    const { category, brand, name, price, season, source, status, color, purchaseDate } = body
+    const { category, brand, name, price, season, source, status, color, purchaseDate, imageUrl, newImages } = body
 
     const item = await prisma.item.update({
       where: {
@@ -32,7 +32,15 @@ export async function PATCH(
         source,
         status,
         color,
-        purchaseDate: purchaseDate ? new Date(purchaseDate) : null
+        purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
+        imageUrl: imageUrl, // Update main image if provided
+        images: newImages && newImages.length > 0 ? {
+          create: newImages.map((url: string) => ({ url }))
+        } : undefined
+      },
+      include: {
+        images: true,
+        coordinates: true
       }
     })
 
